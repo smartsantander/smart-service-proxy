@@ -27,6 +27,7 @@ package eu.spitfire_project.smart_service_proxy;
 import eu.spitfire_project.smart_service_proxy.backends.coap.CoapBackend;
 import eu.spitfire_project.smart_service_proxy.backends.files.FilesBackend;
 import eu.spitfire_project.smart_service_proxy.backends.generator.GeneratorBackend;
+import eu.spitfire_project.smart_service_proxy.backends.parking.ParkingHLBackend;
 import eu.spitfire_project.smart_service_proxy.backends.simple.SimpleBackend;
 import eu.spitfire_project.smart_service_proxy.backends.slse.SLSEBackend;
 import eu.spitfire_project.smart_service_proxy.backends.uberdust.UberdustBackend;
@@ -164,6 +165,11 @@ public class Main {
             else if(enabledBackend.equals("simple")){
 
                 backend = new SimpleBackend();
+            }
+            
+            //ParkingBackend
+            else if(enabledBackend.equals("parking-hl")){
+                backend = new ParkingHLBackend();
             }
 
             //FilesBackend
