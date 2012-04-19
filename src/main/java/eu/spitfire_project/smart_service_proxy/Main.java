@@ -169,7 +169,7 @@ public class Main {
             
             //ParkingBackend
             else if(enabledBackend.equals("parking-hl")){
-                backend = new ParkingHLBackend();
+                backend = new ParkingHLBackend(config.getString("parkingURI"));
             }
 
             //FilesBackend

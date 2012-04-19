@@ -24,11 +24,17 @@
  */
 package eu.spitfire_project.smart_service_proxy.backends.parking;
 
+import java.io.IOException;
+import java.io.InputStream;
+import java.net.MalformedURLException;
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.net.URL;
+import java.net.URLConnection;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Set;
+import java.util.Scanner;
 
 import org.apache.commons.configuration.ConfigurationException;
 import org.apache.log4j.Logger;
@@ -42,6 +48,7 @@ import org.jboss.netty.handler.codec.http.HttpMethod;
 import org.jboss.netty.handler.codec.http.HttpRequest;
 import org.jboss.netty.handler.codec.http.HttpResponseStatus;
 
+import com.google.gson.Gson;
 import com.hp.hpl.jena.rdf.model.Model;
 import com.hp.hpl.jena.rdf.model.ModelFactory;
 import com.hp.hpl.jena.vocabulary.VCARD;
@@ -52,10 +59,7 @@ import eu.spitfire_project.smart_service_proxy.core.SelfDescription;
 import eu.spitfire_project.smart_service_proxy.utils.HttpResponseFactory;
 
 /**
- * A {@link ParkingHLBackend} instance hosts a simple standard model. This back end is basically to ensure the functionality
- * of the underlying handler stack. If it's instantiated (by setting <code>enableBackend="simple"</code> in the
- * <code>ssp.properties</code> file) it registers its service (/JohnSmith) at the {@link EntityManager} instance which
- * causes this service to occur on the HTML page (at <code>http://<ssp-ip>:<ssp-port>/) listing the available services. 
+ * A {@link ParkingHLBackend} instance hosts models for parking areas. 
  *
  * @author Oliver Kleine, Florian Massel
  *
@@ -66,15 +70,18 @@ public class ParkingHLBackend extends Backend {
     private static Logger log = Logger.getLogger(ParkingHLBackend.class.getName());
 
     private HashMap<URI, Model> resources = new HashMap<URI, Model>();
+    private String paringkURL;
 
     /**
      * Returns a new Backend instance and reads the actual configuration from ssp.properties
+     * @param parkingUrl URL of the proprietary parking information 
      *
      * @throws org.apache.commons.configuration.ConfigurationException
      *          if an error occurs while loading ssp.properties
      */
-    public ParkingHLBackend() throws ConfigurationException {
+    public ParkingHLBackend(String parkingUrl) throws ConfigurationException {
         super();
+        this.paringkURL = parkingUrl;
     }
 
     public void bind(EntityManager em){
@@ -84,20 +91,46 @@ public class ParkingHLBackend extends Backend {
     
     private void registerResources(){
         try {
-            String personURI = "http://example.org/JohnSmith";
-            Model model = ModelFactory.createDefaultModel();
-            model.createResource(personURI).addProperty(VCARD.FN, "John Smith");
             
-            URI resourceURI = new URI(entityManager.getURIBase() + pathPrefix + "JohnSmith");
-            resources.put(resourceURI, model);
-
-            if(log.isDebugEnabled()){
-                log.debug("[ParkingBackend] Successfully added new resource at " + resourceURI);
+            // get JSON
+            URL url = new URL(paringkURL);
+            URLConnection conn = url.openConnection();
+            InputStream is = conn.getInputStream();
+            String json = new Scanner(is,"utf8").useDelimiter("\\A").next();
+            Gson gson = new Gson();
+            Parkings parkings = gson.fromJson(json, Parkings.class);
+            // create resources
+            
+            Model model = ModelFactory.createDefaultModel();
+            URI resourceURI;
+            
+            
+            for (ParkingInfo parking : parkings.getParkings()) {
+                resourceURI = new URI(entityManager.getURIBase() + pathPrefix + parking.getName());
             }
+            
+            
+            
+            // old code from Simple backend
+//            String personURI = "http://example.org/JohnSmith";
+//            Model model = ModelFactory.createDefaultModel();
+//            model.createResource(personURI).addProperty(VCARD.FN, "John Smith");
+//            
+//            URI resourceURI = new URI(entityManager.getURIBase() + pathPrefix + "JohnSmith");
+//            resources.put(resourceURI, model);
+//
+//            if(log.isDebugEnabled()){
+//                log.debug("Successfully added new resource at " + resourceURI);
+//            }
 
         } catch (URISyntaxException e) {
-            log.fatal("[ParkingBackend] This should never happen.", e);
+            log.fatal("This should never happen.", e);
+        } catch (MalformedURLException e) {
+            log.fatal("Parking URL is malformed.", e);        
+        } catch (IOException e) {
+            log.fatal("Parking URL is not acessible.", e);
         }
+        
     }
 
     @Override
