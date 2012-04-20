@@ -32,6 +32,7 @@ import org.jboss.netty.handler.codec.http.DefaultHttpResponse;
 import org.jboss.netty.handler.codec.http.HttpRequest;
 import org.jboss.netty.handler.codec.http.HttpResponse;
 import org.jboss.netty.handler.codec.http.HttpResponseStatus;
+import org.openjena.riot.system.JenaWriterRdfJson;
 
 import java.io.ByteArrayOutputStream;
 import java.nio.charset.Charset;
@@ -87,7 +88,6 @@ public class ModelFormatter extends SimpleChannelHandler {
             
 			if(httpRequest != null) {
 				String acceptHeader = httpRequest.getHeader("Accept");
-					httpRequest.getHeaderNames();	
 				if(acceptHeader != null) {
 					if(acceptHeader.indexOf("application/rdf+xml") != -1){
                         lang = "RDF/XML";
@@ -105,10 +105,19 @@ public class ModelFormatter extends SimpleChannelHandler {
                         lang = "TURTLE";
                         mimeType = "text/turtle";
                     }
+					else if(acceptHeader.indexOf("text/json") != -1){
+					    lang = "RDF/JSON";
+					    mimeType = "text/json";
+					}
 				}
 			}
 			
-			model.write(os, lang);
+			if(lang == "RDF/JSON"){
+			    JenaWriterRdfJson writer = new JenaWriterRdfJson();
+			    writer.write(model, os, "RDF/JSON");
+			}else{
+			    model.write(os, lang);
+			}
 			
 			HttpResponse response = new DefaultHttpResponse(httpRequest.getProtocolVersion(), HttpResponseStatus.OK);
 			response.setHeader(CONTENT_TYPE, mimeType + "; charset=utf-8");
