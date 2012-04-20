@@ -86,8 +86,8 @@ public class ModelFormatter extends SimpleChannelHandler {
             String mimeType = DEFAULT_RESPONSE_MIME_TYPE;
             
 			if(httpRequest != null) {
-				String acceptHeader = httpRequest.getHeader("acceptHeader");
-						
+				String acceptHeader = httpRequest.getHeader("Accept");
+					httpRequest.getHeaderNames();	
 				if(acceptHeader != null) {
 					if(acceptHeader.indexOf("application/rdf+xml") != -1){
                         lang = "RDF/XML";
