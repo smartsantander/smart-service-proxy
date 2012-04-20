@@ -51,6 +51,7 @@ import org.jboss.netty.handler.codec.http.HttpResponseStatus;
 import com.google.gson.Gson;
 import com.hp.hpl.jena.rdf.model.Model;
 import com.hp.hpl.jena.rdf.model.ModelFactory;
+import com.hp.hpl.jena.rdf.model.Resource;
 import com.hp.hpl.jena.vocabulary.VCARD;
 
 import eu.spitfire_project.smart_service_proxy.core.Backend;
@@ -59,10 +60,10 @@ import eu.spitfire_project.smart_service_proxy.core.SelfDescription;
 import eu.spitfire_project.smart_service_proxy.utils.HttpResponseFactory;
 
 /**
- * A {@link ParkingHLBackend} instance hosts models for parking areas. 
- *
+ * A {@link ParkingHLBackend} instance hosts models for parking areas.
+ * 
  * @author Oliver Kleine, Florian Massel
- *
+ * 
  */
 
 public class ParkingHLBackend extends Backend {
@@ -74,68 +75,79 @@ public class ParkingHLBackend extends Backend {
 
     /**
      * Returns a new Backend instance and reads the actual configuration from ssp.properties
-     * @param parkingUrl URL of the proprietary parking information 
-     *
+     * 
+     * @param parkingUrl
+     *            URL of the proprietary parking information
+     * 
      * @throws org.apache.commons.configuration.ConfigurationException
-     *          if an error occurs while loading ssp.properties
+     *             if an error occurs while loading ssp.properties
      */
     public ParkingHLBackend(String parkingUrl) throws ConfigurationException {
         super();
         this.paringkURL = parkingUrl;
     }
 
-    public void bind(EntityManager em){
+    public void bind(EntityManager em) {
         super.bind(em);
         registerResources();
     }
-    
-    private void registerResources(){
+
+    private void registerResources() {
         try {
-            
+
             // get JSON
             URL url = new URL(paringkURL);
             URLConnection conn = url.openConnection();
             InputStream is = conn.getInputStream();
-            String json = new Scanner(is,"utf8").useDelimiter("\\A").next();
+            String json = new Scanner(is, "utf8").useDelimiter("\\A").next();
             Gson gson = new Gson();
             Parkings parkings = gson.fromJson(json, Parkings.class);
             // create resources
-            
+
             Model model = ModelFactory.createDefaultModel();
-            URI resourceURI;
-            
-            
+
             for (ParkingInfo parking : parkings.getParkings()) {
-                resourceURI = new URI(entityManager.getURIBase() + pathPrefix + parking.getName());
+                Resource currentParking =
+                        model.createResource("http://www.smarthl.de/parking/" + parking.getName(),
+                                ParkingVocab.PARKING_OUTDOOR_AREA);
+                for (int i = 0; i < parking.getSpaces(); i++) {
+                    Resource currentParkingLot =
+                            model.createResource("http://www.smarthl.de/parking/" + parking.getName() + "/" + i,
+                                    ParkingVocab.PARKING_PARKING_LOT);
+                    currentParking.addProperty(DULVocab.HAS_PART, currentParkingLot);
+                    currentParkingLot.addProperty(ParkingVocab.PARKINGID, String.valueOf(i));
+                    if (i < parking.getFree()) {
+                        currentParkingLot.addProperty(ParkingVocab.PARKINGSTATUS, ParkingVocab.PARKING_BOOKED_LOT);
+                    } else {
+                        currentParkingLot.addProperty(ParkingVocab.PARKINGSTATUS, ParkingVocab.PARKING_AVAILABLE_LOT);
+                    }
+                }
             }
-            
-            
-            
-            // old code from Simple backend
-//            String personURI = "http://example.org/JohnSmith";
-//            Model model = ModelFactory.createDefaultModel();
-//            model.createResource(personURI).addProperty(VCARD.FN, "John Smith");
-//            
-//            URI resourceURI = new URI(entityManager.getURIBase() + pathPrefix + "JohnSmith");
-//            resources.put(resourceURI, model);
-//
-//            if(log.isDebugEnabled()){
-//                log.debug("Successfully added new resource at " + resourceURI);
-//            }
+
+            // String personURI = "http://example.org/JohnSmith";
+            // Model model = ModelFactory.createDefaultModel();
+            // model.createResource(personURI).addProperty(VCARD.FN, "John Smith");
+            //
+            URI resourceURI = new URI(entityManager.getURIBase() + pathPrefix + "HLParkings");
+            resources.put(resourceURI, model);
+            //
+            if (log.isDebugEnabled()) {
+                log.debug("Successfully added new resource at " + resourceURI);
+            }
 
         } catch (URISyntaxException e) {
             log.fatal("This should never happen.", e);
         } catch (MalformedURLException e) {
-            log.fatal("Parking URL is malformed.", e);        
+            log.fatal("Parking URL is malformed.", e);
         } catch (IOException e) {
             log.fatal("Parking URL is not acessible.", e);
         }
-        
+
     }
 
     @Override
-    public void messageReceived(ChannelHandlerContext ctx, MessageEvent me) throws Exception{
-        if(!(me.getMessage() instanceof HttpRequest)){
+    public void messageReceived(ChannelHandlerContext ctx, MessageEvent me) throws Exception {
+        if (!(me.getMessage() instanceof HttpRequest)) {
             ctx.sendUpstream(me);
             return;
         }
@@ -143,42 +155,40 @@ public class ParkingHLBackend extends Backend {
         HttpRequest request = (HttpRequest) me.getMessage();
         Object response;
 
-        //Look up resource
+        // Look up resource
         URI resourceURI = entityManager.normalizeURI(new URI(request.getUri()));
         Model model = resources.get(resourceURI);
-            
-        if(model != null){
-            if(request.getMethod() == HttpMethod.GET){
+
+        if (model != null) {
+            if (request.getMethod() == HttpMethod.GET) {
                 response = new SelfDescription(model, new URI(request.getUri()), new Date());
-                
-                if(log.isDebugEnabled()){
+
+                if (log.isDebugEnabled()) {
                     log.debug("[ParkingBackend] Resource found: " + resourceURI);
                 }
-            }
-            else{
+            } else {
                 response = new DefaultHttpResponse(request.getProtocolVersion(), HttpResponseStatus.METHOD_NOT_ALLOWED);
 
-                if(log.isDebugEnabled()){
+                if (log.isDebugEnabled()) {
                     log.debug("[ParkingBackend] Method not allowed: " + request.getMethod());
                 }
             }
-        }
-        else{
-            response = HttpResponseFactory.createHttpResponse(request.getProtocolVersion(),
-                    HttpResponseStatus.NOT_FOUND);
-            
-            if(log.isDebugEnabled()){
+        } else {
+            response =
+                    HttpResponseFactory.createHttpResponse(request.getProtocolVersion(), HttpResponseStatus.NOT_FOUND);
+
+            if (log.isDebugEnabled()) {
                 log.debug("[ParkingBackend] Resource not found: " + resourceURI);
             }
         }
-       
-        //Send response
+
+        // Send response
         ChannelFuture future = Channels.write(ctx.getChannel(), response);
         future.addListener(ChannelFutureListener.CLOSE);
     }
 
     @Override
-    public Set<URI> getResources(){
+    public Set<URI> getResources() {
         return resources.keySet();
     }
 }
