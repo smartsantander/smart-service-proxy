@@ -100,8 +100,12 @@ public class ParkingHLBackend extends Backend {
             URLConnection conn = url.openConnection();
             InputStream is = conn.getInputStream();
             String json = new Scanner(is, "utf8").useDelimiter("\\A").next();
+            //cut off "{"current":" and "}"
             Gson gson = new Gson();
             Parkings parkings = gson.fromJson(json, Parkings.class);
+            if(parkings.getParkings() == null){
+                throw new IOException("No parkings could not be parsed from: "+json);
+            }
             // create resources
 
             Model model = ModelFactory.createDefaultModel();
@@ -117,9 +121,9 @@ public class ParkingHLBackend extends Backend {
                     currentParking.addProperty(DULVocab.HAS_PART, currentParkingLot);
                     currentParkingLot.addProperty(ParkingVocab.PARKINGID, String.valueOf(i));
                     if (i < parking.getFree()) {
-                        currentParkingLot.addProperty(ParkingVocab.PARKINGSTATUS, ParkingVocab.PARKING_BOOKED_LOT);
-                    } else {
                         currentParkingLot.addProperty(ParkingVocab.PARKINGSTATUS, ParkingVocab.PARKING_AVAILABLE_LOT);
+                    } else {
+                        currentParkingLot.addProperty(ParkingVocab.PARKINGSTATUS, ParkingVocab.PARKING_BOOKED_LOT);
                     }
                 }
             }
