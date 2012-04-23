@@ -1,0 +1,47 @@
+#Copy this files content in a new file ssp.properties in the same directory to customize it
+
+#-------------
+#Core settings
+#-------------
+#baseURIHost = www.coap2.wisebed.itm.uni-luebeck.de
+#listenPort = 8080
+#ram = 2097152
+
+
+#--------------
+#Parking-HL backend
+#--------------
+enableBackend = parking-hl
+parkingURI = http://141.83.151.102:8080/json/current
+# http://smartluebeck.de/parking/json/current 
+
+#-----------------
+#Generator backend
+#-----------------
+#enableBackend = generator
+#generator.features = 100
+#generator.pFeature = 0.01
+#generator.pValue = 0.8
+#generator.nodes = 10
+
+
+#------------
+#SLSE backend
+#-------------
+#enableBackend = slse
+#slse.waitForPolling = false
+#threads = 30
+#slse.parallelPolling = False
+
+
+#------------
+#CoAP backend
+#------------
+#enableBackend = coap
+#coap.ipv6Prefix = 2001:638:70a:c003::
+
+#-------------
+#Files backend
+#-------------
+#enableBackend = files
+#files.directory = /home/spitfire/ssp-data/files
