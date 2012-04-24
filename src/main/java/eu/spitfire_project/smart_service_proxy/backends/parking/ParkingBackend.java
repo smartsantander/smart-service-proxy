@@ -26,16 +26,20 @@ public abstract class ParkingBackend extends Backend {
 	 * @param parkingAreas
 	 *            A collection of parking areas
 	 * @return a Jena model for the provided parking areas
+	
 	 */
 	protected Model createModel(final String locationPrefix, final Collection<ParkingArea> parkingAreas) {
 		final Model model = ModelFactory.createDefaultModel();
 
 		for (final ParkingArea parking : parkingAreas) {
-			final Resource currentParking = model.createResource("http://www.smarthl.de/parking/" + locationPrefix + "/" + parking.getName(),
+
+			String name = StringEscapeUtils.escapeHtml4(parking.getName());
+
+			final Resource currentParking = model.createResource("http://www.smarthl.de/parking/" + locationPrefix + "/" + name,
 					ParkingVocab.PARKING_OUTDOOR_AREA);
 			for (ParkingSpace parkingLot : parking.getParkingSpaces()) {
 
-				final Resource currentParkingLot = model.createResource("http://www.smarthl.de/parking/" + locationPrefix + "/" + parking.getName()
+				final Resource currentParkingLot = model.createResource("http://www.smarthl.de/parking/" + locationPrefix + "/" + name
 						+ "/" + parkingLot.getId(), ParkingVocab.PARKING_PARKING_LOT);
 				currentParking.addProperty(DULVocab.HAS_PART, currentParkingLot);
 				currentParkingLot.addProperty(ParkingVocab.PARKINGID, parkingLot.getId());
