@@ -17,7 +17,7 @@ import javax.xml.ws.WebServiceFeature;
  * Generated source version: 2.1
  * 
  */
-@WebServiceClient(name = "ParkingService", targetNamespace = "http://smartsantander.eu/parkingservice/", wsdlLocation = "file:/home/sebers/SoftwareProjects/smart-service-proxy/tmp/ParkingService.wsdl")
+@WebServiceClient(name = "ParkingService", targetNamespace = "http://smartsantander.eu/parkingservice/", wsdlLocation = "http://130.225.2.246:8080/SmartSantanderParkingServer/services/ParkingService?wsdl")
 public class ParkingService
     extends Service
 {
@@ -30,7 +30,7 @@ public class ParkingService
         try {
             URL baseUrl;
             baseUrl = eu.spitfire_project.smart_service_proxy.backends.parking.generated.ParkingService.class.getResource(".");
-            url = new URL(baseUrl, "file:/home/sebers/SoftwareProjects/smart-service-proxy/tmp/ParkingService.wsdl");
+            url = new URL(baseUrl, "http://130.225.2.246:8080/SmartSantanderParkingServer/services/ParkingService?wsdl");
         } catch (MalformedURLException e) {
             logger.warning("Failed to create URL for the wsdl Location: 'file:/home/sebers/SoftwareProjects/smart-service-proxy/tmp/ParkingService.wsdl', retrying as a local file");
             logger.warning(e.getMessage());
