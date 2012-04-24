@@ -3,8 +3,26 @@ package eu.spitfire_project.smart_service_proxy.backends.parking;
 public class ParkingSpace {
 
 	private String type;
-	private String status;
+	public enum ParkingLotStatus {FREE, OCCUPIED};
 	private GeoInfo locationCoordinates;
+	private String id;
+	private ParkingLotStatus status;
+
+	public ParkingSpace(String id, String type, ParkingLotStatus status, GeoInfo locationCoordinates) {
+		super();
+		this.id = id;
+		this.type = type;
+		this.status = status;
+		this.locationCoordinates = locationCoordinates;
+	}
+
+	
+	
+	public ParkingSpace() {
+		super();
+	}
+
+
 
 	// ------------------------------------------------------------------------
 	/**
@@ -27,7 +45,7 @@ public class ParkingSpace {
 	/**
 	 * @return the status
 	 */
-	public String getStatus() {
+	public ParkingLotStatus getStatus() {
 		return status;
 	}
 
@@ -36,7 +54,7 @@ public class ParkingSpace {
 	 * @param status
 	 *            the status to set
 	 */
-	public void setStatus(final String status) {
+	public void setStatus(final ParkingLotStatus status) {
 		this.status = status;
 	}
 
@@ -55,6 +73,24 @@ public class ParkingSpace {
 	 */
 	public void setLocationCoordinates(final GeoInfo locationCoordinates) {
 		this.locationCoordinates = locationCoordinates;
+	}
+
+
+
+	/**
+	 * @return the id
+	 */
+	public String getId() {
+		return id;
+	}
+
+
+
+	/**
+	 * @param id the id to set
+	 */
+	public void setId(String id) {
+		this.id = id;
 	}
 
 }

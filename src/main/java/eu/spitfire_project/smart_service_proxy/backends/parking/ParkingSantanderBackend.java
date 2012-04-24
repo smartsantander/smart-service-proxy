@@ -47,6 +47,7 @@ import org.jboss.netty.handler.codec.http.HttpResponseStatus;
 
 import com.hp.hpl.jena.rdf.model.Model;
 
+import eu.spitfire_project.smart_service_proxy.backends.parking.ParkingSpace.ParkingLotStatus;
 import eu.spitfire_project.smart_service_proxy.backends.parking.generated.ParkingLot;
 import eu.spitfire_project.smart_service_proxy.backends.parking.generated.ParkingService;
 import eu.spitfire_project.smart_service_proxy.core.EntityManager;
@@ -138,14 +139,16 @@ public class ParkingSantanderBackend extends ParkingBackend {
 
 				// add all parking spaces fetched via web service to the recently created parking
 				// area
+				int id=0;
 				for (final eu.spitfire_project.smart_service_proxy.backends.parking.generated.ParkingSpace parkingSpace : parkingLotSpaces) {
 					final ParkingSpace space = new ParkingSpace();
 					parkingSpaces.add(space);
 
 					space.setLocationCoordinates(new GeoInfo(parkingSpace.getParkingSpaceCoordinates().getLatitude(), parkingSpace
 							.getParkingSpaceCoordinates().getLongitude()));
-					space.setStatus(parkingSpace.getCurrentStatus().getSpace());
+					space.setStatus("FREE".equals(parkingSpace.getCurrentStatus()) ? ParkingLotStatus.FREE: ParkingLotStatus.OCCUPIED);
 					space.setType(parkingSpace.getParkingSpaceType().getParkingSpaceType());
+					space.setId(String.valueOf(id++));
 
 				}
 			}

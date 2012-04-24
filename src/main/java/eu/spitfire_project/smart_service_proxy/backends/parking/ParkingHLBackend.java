@@ -31,6 +31,8 @@ import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URL;
 import java.net.URLConnection;
+import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Scanner;
@@ -51,6 +53,7 @@ import org.jboss.netty.handler.codec.http.HttpResponseStatus;
 import com.google.gson.Gson;
 import com.hp.hpl.jena.rdf.model.Model;
 
+import eu.spitfire_project.smart_service_proxy.backends.parking.ParkingSpace.ParkingLotStatus;
 import eu.spitfire_project.smart_service_proxy.core.EntityManager;
 import eu.spitfire_project.smart_service_proxy.core.SelfDescription;
 import eu.spitfire_project.smart_service_proxy.utils.HttpResponseFactory;
@@ -92,25 +95,35 @@ public class ParkingHLBackend extends ParkingBackend {
 	private void registerResources() {
 		try {
 
-			// get JSON
+			// get and parse proprietary JSON
 			final URL url = new URL(paringkURL);
 			final URLConnection conn = url.openConnection();
 			final InputStream is = conn.getInputStream();
 			final String json = new Scanner(is, "utf8").useDelimiter("\\A").next();
-			// cut off "{"current":" and "}"
 			final Gson gson = new Gson();
 			final Parkings parkings = gson.fromJson(json, Parkings.class);
 			if (parkings.getParkings() == null) {
 				throw new IOException("No parkings could not be parsed from: " + json);
 			}
-			// create resources
 
+			// create virtual/dummy parking lots as we have only the total amount and free amount in Lübeck
+			for (ParkingArea parkingArea : parkings.getParkings()) {
+				Collection<ParkingSpace> psl = new ArrayList<ParkingSpace>(parkingArea.getSpaces());
+
+				// the free lots
+				for (int lot = 0; lot < parkingArea.getFree(); lot++) {
+					psl.add(new ParkingSpace(String.valueOf(lot), parkingArea.getKind(), ParkingLotStatus.FREE, parkingArea.getGeo()));
+				}
+				// the occupied lots
+				for (int lot = parkingArea.getFree(); lot < parkingArea.getSpaces(); lot++) {
+					psl.add(new ParkingSpace(String.valueOf(lot), parkingArea.getKind(), ParkingLotStatus.OCCUPIED, parkingArea.getGeo()));
+				}
+				parkingArea.setParkingSpaces(psl);
+			}
+
+			// create resources
 			final Model model = createModel("hl", parkings.getParkings());
 
-			// String personURI = "http://example.org/JohnSmith";
-			// Model model = ModelFactory.createDefaultModel();
-			// model.createResource(personURI).addProperty(VCARD.FN, "John Smith");
-			//
 			final URI resourceURI = new URI(entityManager.getURIBase() + pathPrefix + "HLParkings");
 			resources.put(resourceURI, model);
 			//
@@ -144,6 +157,7 @@ public class ParkingHLBackend extends ParkingBackend {
 
 		if (model != null) {
 			if (request.getMethod() == HttpMethod.GET) {
+				// TODO FMA: set caching option appropriately
 				response = new SelfDescription(model, new URI(request.getUri()), new Date());
 
 				if (ParkingHLBackend.log.isDebugEnabled()) {

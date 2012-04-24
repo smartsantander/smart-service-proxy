@@ -6,11 +6,12 @@ import com.hp.hpl.jena.rdf.model.Model;
 import com.hp.hpl.jena.rdf.model.ModelFactory;
 import com.hp.hpl.jena.rdf.model.Resource;
 
+import eu.spitfire_project.smart_service_proxy.backends.parking.ParkingSpace.ParkingLotStatus;
+import eu.spitfire_project.smart_service_proxy.backends.parking.generated.ParkingLot;
 import eu.spitfire_project.smart_service_proxy.core.Backend;
 
 /**
- * Base class for all backends which store and provide information about parking areas and parking
- * spaces.
+ * Base class for all backends which store and provide information about parking areas and parking spaces.
  * 
  * @author Sebastian Ebers
  * @author Florian Massel
@@ -32,15 +33,20 @@ public abstract class ParkingBackend extends Backend {
 		for (final ParkingArea parking : parkingAreas) {
 			final Resource currentParking = model.createResource("http://www.smarthl.de/parking/" + locationPrefix + "/" + parking.getName(),
 					ParkingVocab.PARKING_OUTDOOR_AREA);
-			for (int i = 0; i < parking.getSpaces(); i++) {
+			for (ParkingSpace parkingLot : parking.getParkingSpaces()) {
+
 				final Resource currentParkingLot = model.createResource("http://www.smarthl.de/parking/" + locationPrefix + "/" + parking.getName()
-						+ "/" + i, ParkingVocab.PARKING_PARKING_LOT);
+						+ "/" + parkingLot.getId(), ParkingVocab.PARKING_PARKING_LOT);
 				currentParking.addProperty(DULVocab.HAS_PART, currentParkingLot);
-				currentParkingLot.addProperty(ParkingVocab.PARKINGID, String.valueOf(i));
-				if (i < parking.getFree()) {
+				currentParkingLot.addProperty(ParkingVocab.PARKINGID, parkingLot.getId());
+				if (ParkingLotStatus.FREE.equals(parkingLot.getStatus())) {
 					currentParkingLot.addProperty(ParkingVocab.PARKINGSTATUS, ParkingVocab.PARKING_AVAILABLE_LOT);
 				} else {
 					currentParkingLot.addProperty(ParkingVocab.PARKINGSTATUS, ParkingVocab.PARKING_BOOKED_LOT);
+				}
+				if (null != parkingLot.getLocationCoordinates()) {
+					currentParkingLot.addProperty(Wgs84_posVocab.LAT, String.valueOf(parkingLot.getLocationCoordinates().getLat()));
+					currentParkingLot.addProperty(Wgs84_posVocab.LONG, String.valueOf(parkingLot.getLocationCoordinates().getLng()));
 				}
 			}
 		}
