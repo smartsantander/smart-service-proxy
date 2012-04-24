@@ -82,7 +82,7 @@ public class StatementCache extends SimpleChannelHandler {
             }
             
             //Try to get a statement from the cache
-            CacheElement ce = cache.get(resourceURI);
+            CacheElement ce = cache.get(req.getUri());
             
             if (ce != null) {
                 
