@@ -159,10 +159,11 @@ public class ParkingSantanderBackend extends ParkingBackend {
 			}
 		}
 
-		// create a Jena model based on the created parking areas
-		final Model model = createModel("santander", parkingAreas);
+		
 
 		try {
+			// create a Jena model based on the created parking areas
+			final Model model = createModel("santander", parkingAreas);
 			// create an URI to access the created model
 			final URI resourceURI = new URI(entityManager.getURIBase() + pathPrefix + "Santander");
 			resources.put(resourceURI, model);

@@ -69,7 +69,7 @@ public class ParkingHLBackend extends ParkingBackend {
 
 	private static Logger log = Logger.getLogger(ParkingHLBackend.class.getName());
 
-	private final HashMap<URI, Model> resources = new HashMap<URI, Model>();
+	
 	private final String paringkURL;
 
 	/**
