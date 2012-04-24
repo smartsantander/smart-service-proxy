@@ -2,12 +2,13 @@ package eu.spitfire_project.smart_service_proxy.backends.parking;
 
 import java.util.Collection;
 
+import org.apache.commons.lang3.StringEscapeUtils;
+
 import com.hp.hpl.jena.rdf.model.Model;
 import com.hp.hpl.jena.rdf.model.ModelFactory;
 import com.hp.hpl.jena.rdf.model.Resource;
 
 import eu.spitfire_project.smart_service_proxy.backends.parking.ParkingSpace.ParkingLotStatus;
-import eu.spitfire_project.smart_service_proxy.backends.parking.generated.ParkingLot;
 import eu.spitfire_project.smart_service_proxy.core.Backend;
 
 /**
