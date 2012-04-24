@@ -80,6 +80,8 @@ public class ParkingSantanderBackend extends ParkingBackend {
 	/**
 	 * Returns a new backend instance and reads the actual configuration from ssp.properties
 	 * 
+	 * @param config
+	 *            The main configuration file.
 	 * @throws org.apache.commons.configuration.ConfigurationException
 	 *             if an error occurs while loading ssp.properties
 	 */
@@ -148,6 +150,36 @@ public class ParkingSantanderBackend extends ParkingBackend {
 	 */
 	private void registerResources() {
 
+		// get all available parking areas
+		final Collection<ParkingArea> parkingAreas = getParkingAreas();
+
+		if (parkingAreas != null) {
+
+			cacheExpiration = new Date().getTime() + cachingInterval;
+
+			try {
+				// create a Jena model based on the created parking areas
+				final Model model = createModel("santander", parkingAreas);
+				// create an URI to access the created model
+				final URI resourceURI = new URI(entityManager.getURIBase() + pathPrefix + "Santander");
+				resources.put(resourceURI, model);
+				if (ParkingSantanderBackend.log.isDebugEnabled()) {
+					ParkingSantanderBackend.log.debug("Successfully added new resource at " + resourceURI);
+				}
+			} catch (final URISyntaxException e) {
+				ParkingSantanderBackend.log.fatal("This should never happen.", e);
+			}
+		}
+
+	}
+
+	// ------------------------------------------------------------------------
+	/**
+	 * Fetches parking areas by using a web service and returns the result.
+	 * 
+	 * @return All parking areas provided by a web service.
+	 */
+	private Collection<ParkingArea> getParkingAreas() {
 		// container class to store all parking areas which are accessible via the web service
 		// used below.
 		final Collection<ParkingArea> parkingAreas = new LinkedList<ParkingArea>();
@@ -159,31 +191,15 @@ public class ParkingSantanderBackend extends ParkingBackend {
 			parkingLot = new ParkingService().getParkingService().getParkingLots().getParkingLot();
 		} catch (final Exception e) {
 			ParkingSantanderBackend.log.error(e, e);
-			return;
+			return null;
 		}
 
-		// iterate over all parking lots and ...
+		// iterate over all parking lots
 		for (final ParkingLot pl : parkingLot) {
 			parkingAreas.add(toParkingArea(pl));
 		}
 
-		
-
-		cacheExpiration = new Date().getTime() + cachingInterval;
-
-		try {
-			// create a Jena model based on the created parking areas
-			final Model model = createModel("santander", parkingAreas);
-			// create an URI to access the created model
-			final URI resourceURI = new URI(entityManager.getURIBase() + pathPrefix + "Santander");
-			resources.put(resourceURI, model);
-			if (ParkingSantanderBackend.log.isDebugEnabled()) {
-				ParkingSantanderBackend.log.debug("Successfully added new resource at " + resourceURI);
-			}
-		} catch (final URISyntaxException e) {
-			ParkingSantanderBackend.log.fatal("This should never happen.", e);
-		}
-
+		return parkingAreas;
 	}
 
 	// ------------------------------------------------------------------------
