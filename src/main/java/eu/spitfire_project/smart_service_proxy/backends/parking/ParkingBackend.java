@@ -27,31 +27,35 @@ public abstract class ParkingBackend extends Backend {
 	 * @param parkingAreas
 	 *            A collection of parking areas
 	 * @return a Jena model for the provided parking areas
-	
 	 */
 	protected Model createModel(final String locationPrefix, final Collection<ParkingArea> parkingAreas) {
 		final Model model = ModelFactory.createDefaultModel();
 
-		for (final ParkingArea parking : parkingAreas) {
+		for (final ParkingArea parkingArea : parkingAreas) {
 
-			String name = StringEscapeUtils.escapeHtml4(parking.getName());
+			String name = StringEscapeUtils.escapeHtml4(parkingArea.getName());
 
-			final Resource currentParking = model.createResource("http://www.smarthl.de/parking/" + locationPrefix + "/" + name,
-					ParkingVocab.PARKING_OUTDOOR_AREA);
-			for (ParkingSpace parkingLot : parking.getParkingSpaces()) {
+			Resource areaType = "PH".equals(parkingArea.getKind()) ? ParkingVocab.PARKING_INDOOR_AREA : ParkingVocab.PARKING_OUTDOOR_AREA;
+			final Resource parkingResource = model.createResource("http://www.smart" +
+					"hl.de/parking/" + locationPrefix + "/" + name, areaType);
+			for (ParkingSpace parkingLot : parkingArea.getParkingSpaces()) {
 
-				final Resource currentParkingLot = model.createResource("http://www.smarthl.de/parking/" + locationPrefix + "/" + name
-						+ "/" + parkingLot.getId(), ParkingVocab.PARKING_PARKING_LOT);
-				currentParking.addProperty(DULVocab.HAS_PART, currentParkingLot);
-				currentParkingLot.addProperty(ParkingVocab.PARKINGID, parkingLot.getId());
+				Resource parkingLotRes = "PP".equals(parkingLot.getType()) ? ParkingVocab.PARKING_UNCOVERED_LOT : ParkingVocab.PARKING_COVERED_LOT;
+				final Resource parkingLotResource = model.createResource("http://www.smarthl.de/parking/" + locationPrefix + "/" + name + "/"
+						+ parkingLot.getId(), parkingLotRes);
+				parkingResource.addProperty(DULVocab.HAS_PART, parkingLotResource);
+				parkingLotResource.addProperty(ParkingVocab.PARKINGID, parkingLot.getId());
 				if (ParkingLotStatus.FREE.equals(parkingLot.getStatus())) {
-					currentParkingLot.addProperty(ParkingVocab.PARKINGSTATUS, ParkingVocab.PARKING_AVAILABLE_LOT);
+					parkingLotResource.addProperty(ParkingVocab.PARKINGSTATUS, ParkingVocab.PARKING_AVAILABLE_LOT);
 				} else {
-					currentParkingLot.addProperty(ParkingVocab.PARKINGSTATUS, ParkingVocab.PARKING_BOOKED_LOT);
+					parkingLotResource.addProperty(ParkingVocab.PARKINGSTATUS, ParkingVocab.PARKING_UNAVAILABLE_LOT);
+				}
+				if (Boolean.TRUE.equals(parkingLot.getHandicapped())) {
+					parkingLotResource.addProperty(ParkingVocab.PARKINGSTATUS, ParkingVocab.PARKING_RESERVED_LOT);
 				}
 				if (null != parkingLot.getLocationCoordinates()) {
-					currentParkingLot.addProperty(Wgs84_posVocab.LAT, String.valueOf(parkingLot.getLocationCoordinates().getLat()));
-					currentParkingLot.addProperty(Wgs84_posVocab.LONG, String.valueOf(parkingLot.getLocationCoordinates().getLng()));
+					parkingLotResource.addProperty(Wgs84_posVocab.LAT, String.valueOf(parkingLot.getLocationCoordinates().getLat()));
+					parkingLotResource.addProperty(Wgs84_posVocab.LONG, String.valueOf(parkingLot.getLocationCoordinates().getLng()));
 				}
 			}
 		}

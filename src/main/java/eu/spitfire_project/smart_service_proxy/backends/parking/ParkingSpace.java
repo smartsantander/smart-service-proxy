@@ -7,6 +7,7 @@ public class ParkingSpace {
 	private GeoInfo locationCoordinates;
 	private String id;
 	private ParkingLotStatus status;
+	private Boolean handicapped;
 
 	public ParkingSpace(String id, String type, ParkingLotStatus status, GeoInfo locationCoordinates) {
 		super();
@@ -26,7 +27,7 @@ public class ParkingSpace {
 
 	// ------------------------------------------------------------------------
 	/**
-	 * @return the type
+	 * @return the type "PH" for covered parking house, "PP" for uncovered parking space
 	 */
 	public String getType() {
 		return type;
@@ -35,7 +36,7 @@ public class ParkingSpace {
 	// ------------------------------------------------------------------------
 	/**
 	 * @param type
-	 *            the type to set
+	 *            the type to set "PH" for covered parking house, "PP" for uncovered parking space
 	 */
 	public void setType(final String type) {
 		this.type = type;
@@ -91,6 +92,24 @@ public class ParkingSpace {
 	 */
 	public void setId(String id) {
 		this.id = id;
+	}
+
+
+
+	/**
+	 * @return the handicapped
+	 */
+	public Boolean getHandicapped() {
+		return handicapped;
+	}
+
+
+
+	/**
+	 * @param handicapped the handicapped to set
+	 */
+	public void setHandicapped(Boolean handicapped) {
+		this.handicapped = handicapped;
 	}
 
 }

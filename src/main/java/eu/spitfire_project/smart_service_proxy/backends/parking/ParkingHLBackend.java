@@ -124,7 +124,7 @@ public class ParkingHLBackend extends ParkingBackend {
 			// create resources
 			final Model model = createModel("hl", parkings.getParkings());
 
-			final URI resourceURI = new URI(entityManager.getURIBase() + pathPrefix + "HLParkings");
+			final URI resourceURI = new URI(entityManager.getURIBase() + pathPrefix + "HL");
 			resources.put(resourceURI, model);
 			//
 			if (ParkingHLBackend.log.isDebugEnabled()) {

@@ -147,7 +147,12 @@ public class ParkingSantanderBackend extends ParkingBackend {
 					space.setLocationCoordinates(new GeoInfo(parkingSpace.getParkingSpaceCoordinates().getLatitude(), parkingSpace
 							.getParkingSpaceCoordinates().getLongitude()));
 					space.setStatus("FREE".equals(parkingSpace.getCurrentStatus()) ? ParkingLotStatus.FREE: ParkingLotStatus.OCCUPIED);
-					space.setType(parkingSpace.getParkingSpaceType().getParkingSpaceType());
+					//only uncovered parking spots
+					space.setType("PP");
+					//web service returns either STANDARD or PEOPLE WITH DISABILITIES
+					if(!"STANDARD".equals(parkingSpace.getParkingSpaceType().getParkingSpaceType())){
+						space.setHandicapped(Boolean.TRUE);
+					}
 					space.setId(String.valueOf(id++));
 
 				}
@@ -159,7 +164,7 @@ public class ParkingSantanderBackend extends ParkingBackend {
 
 		try {
 			// create an URI to access the created model
-			final URI resourceURI = new URI(entityManager.getURIBase() + pathPrefix + "SantanderParkings");
+			final URI resourceURI = new URI(entityManager.getURIBase() + pathPrefix + "Santander");
 			resources.put(resourceURI, model);
 			if (ParkingSantanderBackend.log.isDebugEnabled()) {
 				ParkingSantanderBackend.log.debug("Successfully added new resource at " + resourceURI);
