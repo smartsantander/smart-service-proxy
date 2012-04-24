@@ -168,7 +168,7 @@ public class Main {
 
 			// SantanderParkingBackend
 			else if (enabledBackend.equals("parking-santander")) {
-				backend = new ParkingSantanderBackend();
+				backend = new ParkingSantanderBackend(config);
 			}
 
 			// FilesBackend

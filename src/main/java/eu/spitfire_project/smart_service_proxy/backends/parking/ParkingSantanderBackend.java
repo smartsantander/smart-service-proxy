@@ -71,6 +71,12 @@ public class ParkingSantanderBackend extends ParkingBackend {
 	/** A mapping between Jena models and the URI to access them */
 	private final HashMap<URI, Model> resources = new HashMap<URI, Model>();
 
+	/** Inicates the time, new values are considered as valid */
+	private int cachingInterval = 0;
+
+	/** Indicates the currently cached values's expiration date */
+	private long cacheExpiration;
+
 	/**
 	 * Returns a new backend instance and reads the actual configuration from ssp.properties
 	 * 
@@ -79,6 +85,7 @@ public class ParkingSantanderBackend extends ParkingBackend {
 	 */
 	public ParkingSantanderBackend(final Configuration config) throws ConfigurationException {
 		super();
+		cachingInterval = config.getInt("parkingSantanderCachingMinutes") * 1000 * 60;
 	}
 
 	@Override
@@ -103,7 +110,7 @@ public class ParkingSantanderBackend extends ParkingBackend {
 
 		if (model != null) {
 			if (request.getMethod() == HttpMethod.GET) {
-				response = new SelfDescription(model, new URI(request.getUri()), new Date());
+				response = new SelfDescription(model, new URI(request.getUri()), new Date(cacheExpiration));
 
 				if (ParkingSantanderBackend.log.isDebugEnabled()) {
 					ParkingSantanderBackend.log.debug("[ParkingBackend] Resource found: " + resourceURI);
@@ -161,6 +168,8 @@ public class ParkingSantanderBackend extends ParkingBackend {
 		}
 
 		
+
+		cacheExpiration = new Date().getTime() + cachingInterval;
 
 		try {
 			// create a Jena model based on the created parking areas

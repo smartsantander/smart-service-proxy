@@ -19,7 +19,7 @@ parkingURI = http://141.83.151.102:8080/json/current
 #Parking-Santander backend
 #--------------
 enableBackend = parking-santander
-parkingURI = http://130.225.2.246:8080/SmartSantanderParkingServer/services/ParkingService?wsdl
+parkingSantanderCachingMinutes = 5
 
 #-----------------
 #Generator backend
