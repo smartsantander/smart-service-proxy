@@ -1,36 +1,38 @@
 package eu.spitfire_project.smart_service_proxy.backends.parking;
 
 import java.util.Arrays;
+import java.util.List;
 
 /**
- * Simple transport structure used for deserializing information about parking areas and lots with gson.
+ * Simple transport structure used for deserializing information about parking areas and lots with
+ * gson.
  * 
  * @author massel
  * 
  */
 public class Parkings {
-    private CityInfo[] cities;
+	private CityInfo[] cities;
 
-    @Override
-    public String toString() {
-        return "Parkings [cities=" + Arrays.toString(cities) + ", parkings=" + Arrays.toString(parkings) + "]";
-    }
+	private List<ParkingArea> parkings;
 
-    public CityInfo[] getCities() {
-        return cities;
-    }
+	@Override
+	public String toString() {
+		return "Parkings [cities=" + Arrays.toString(cities) + ", parkings=" + (parkings).toString() + "]";
+	}
 
-    public void setCities(CityInfo[] cities) {
-        this.cities = cities;
-    }
+	public CityInfo[] getCities() {
+		return cities;
+	}
 
-    public ParkingInfo[] getParkings() {
-        return parkings;
-    }
+	public void setCities(final CityInfo[] cities) {
+		this.cities = cities;
+	}
 
-    public void setParkings(ParkingInfo[] parkings) {
-        this.parkings = parkings;
-    }
+	public List<ParkingArea> getParkings() {
+		return parkings;
+	}
 
-    private ParkingInfo[] parkings;
+	public void setParkings(final List<ParkingArea> parkings) {
+		this.parkings = parkings;
+	}
 }
