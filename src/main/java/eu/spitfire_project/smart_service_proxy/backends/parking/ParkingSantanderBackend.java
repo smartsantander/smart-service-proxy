@@ -33,6 +33,7 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Set;
 
+import org.apache.commons.configuration.Configuration;
 import org.apache.commons.configuration.ConfigurationException;
 import org.apache.log4j.Logger;
 import org.jboss.netty.channel.ChannelFuture;
@@ -71,12 +72,12 @@ public class ParkingSantanderBackend extends ParkingBackend {
 	private final HashMap<URI, Model> resources = new HashMap<URI, Model>();
 
 	/**
-	 * Returns a new Backend instance and reads the actual configuration from ssp.properties
+	 * Returns a new backend instance and reads the actual configuration from ssp.properties
 	 * 
 	 * @throws org.apache.commons.configuration.ConfigurationException
 	 *             if an error occurs while loading ssp.properties
 	 */
-	public ParkingSantanderBackend() throws ConfigurationException {
+	public ParkingSantanderBackend(final Configuration config) throws ConfigurationException {
 		super();
 	}
 
@@ -84,95 +85,6 @@ public class ParkingSantanderBackend extends ParkingBackend {
 	public void bind(final EntityManager em) {
 		super.bind(em);
 		registerResources();
-	}
-
-	// ------------------------------------------------------------------------
-	/**
-	 * Fetches all parking areas located in the city of Santander which are provided via the
-	 * "ParkingService" web service, creates a Jena model for them, and publishes them on a web
-	 * site.
-	 */
-	private void registerResources() {
-
-		// container class to store all parking areas which are accessible via the web service
-		// used below.
-		final Collection<ParkingArea> parkingAreas = new LinkedList<ParkingArea>();
-
-		// get all parking lots located in the city of Santander which are accessible via
-		// the "ParkingService" web service.
-		List<ParkingLot> parkingLot = null;
-		try {
-			parkingLot = new ParkingService().getParkingService().getParkingLots().getParkingLot();
-		} catch (final Exception e) {
-			ParkingSantanderBackend.log.error(e, e);
-			return;
-		}
-
-		// iterate over all parking lots and ...
-		for (final ParkingLot pl : parkingLot) {
-
-			// create a new parking area object for this parking lot and put it into the container
-			final ParkingArea area = new ParkingArea();
-			parkingAreas.add(area);
-
-			area.setName(pl.getParkingLotAddress());
-			area.setKind("PP");
-
-			// ... get a list of all single parking spaces
-			final List<eu.spitfire_project.smart_service_proxy.backends.parking.generated.ParkingSpace> parkingLotSpaces = pl.getParkingSpaces();
-
-			// if there are parking spaces accessible ...
-			if ((parkingLotSpaces != null) && (parkingLotSpaces.size() > 0)) {
-
-				// ... use the first parking space to set the geo location of the whole
-				// parking space
-				final eu.spitfire_project.smart_service_proxy.backends.parking.generated.ParkingSpace firstSpace = parkingLotSpaces.get(0);
-				area.setGeo(new GeoInfo(firstSpace.getParkingSpaceCoordinates().getLatitude(), firstSpace.getParkingSpaceCoordinates().getLongitude()));
-
-				// ... and set the number of single spaces as the parking area's size
-				area.setSpaces(parkingLotSpaces.size());
-
-				// create a new collection of parking spaces and add them to the recently created
-				// parking area
-				final Collection<ParkingSpace> parkingSpaces = new LinkedList<ParkingSpace>();
-				area.setParkingSpaces(parkingSpaces);
-
-				// add all parking spaces fetched via web service to the recently created parking
-				// area
-				int id=0;
-				for (final eu.spitfire_project.smart_service_proxy.backends.parking.generated.ParkingSpace parkingSpace : parkingLotSpaces) {
-					final ParkingSpace space = new ParkingSpace();
-					parkingSpaces.add(space);
-
-					space.setLocationCoordinates(new GeoInfo(parkingSpace.getParkingSpaceCoordinates().getLatitude(), parkingSpace
-							.getParkingSpaceCoordinates().getLongitude()));
-					space.setStatus("FREE".equals(parkingSpace.getCurrentStatus()) ? ParkingLotStatus.FREE: ParkingLotStatus.OCCUPIED);
-					//only uncovered parking spots
-					space.setType("PP");
-					//web service returns either STANDARD or PEOPLE WITH DISABILITIES
-					if(!"STANDARD".equals(parkingSpace.getParkingSpaceType().getParkingSpaceType())){
-						space.setHandicapped(Boolean.TRUE);
-					}
-					space.setId(String.valueOf(id++));
-
-				}
-			}
-		}
-
-		// create a Jena model based on the created parking areas
-		final Model model = createModel("santander", parkingAreas);
-
-		try {
-			// create an URI to access the created model
-			final URI resourceURI = new URI(entityManager.getURIBase() + pathPrefix + "Santander");
-			resources.put(resourceURI, model);
-			if (ParkingSantanderBackend.log.isDebugEnabled()) {
-				ParkingSantanderBackend.log.debug("Successfully added new resource at " + resourceURI);
-			}
-		} catch (final URISyntaxException e) {
-			ParkingSantanderBackend.log.fatal("This should never happen.", e);
-		}
-
 	}
 
 	@Override
@@ -219,5 +131,122 @@ public class ParkingSantanderBackend extends ParkingBackend {
 	@Override
 	public Set<URI> getResources() {
 		return resources.keySet();
+	}
+
+	// ------------------------------------------------------------------------
+	/**
+	 * Fetches all parking areas located in the city of Santander which are provided via the
+	 * "ParkingService" web service, creates a Jena model for them, and publishes them on a web
+	 * site.
+	 */
+	private void registerResources() {
+
+		// container class to store all parking areas which are accessible via the web service
+		// used below.
+		final Collection<ParkingArea> parkingAreas = new LinkedList<ParkingArea>();
+
+		// get all parking lots located in the city of Santander which are accessible via
+		// the "ParkingService" web service.
+		List<ParkingLot> parkingLot = null;
+		try {
+			parkingLot = new ParkingService().getParkingService().getParkingLots().getParkingLot();
+		} catch (final Exception e) {
+			ParkingSantanderBackend.log.error(e, e);
+			return;
+		}
+
+		// iterate over all parking lots and ...
+		for (final ParkingLot pl : parkingLot) {
+			parkingAreas.add(toParkingArea(pl));
+		}
+
+		// create a Jena model based on the created parking areas
+		final Model model = createModel("santander", parkingAreas);
+
+		try {
+			// create an URI to access the created model
+			final URI resourceURI = new URI(entityManager.getURIBase() + pathPrefix + "Santander");
+			resources.put(resourceURI, model);
+			if (ParkingSantanderBackend.log.isDebugEnabled()) {
+				ParkingSantanderBackend.log.debug("Successfully added new resource at " + resourceURI);
+			}
+		} catch (final URISyntaxException e) {
+			ParkingSantanderBackend.log.fatal("This should never happen.", e);
+		}
+
+	}
+
+	// ------------------------------------------------------------------------
+	/**
+	 * Converts a parking lot which was fetched via web service to an internal representation and
+	 * returns the result
+	 * 
+	 * @param pl
+	 *            A parking lot provided via web service
+	 * @return An internal representation of the provided parking lot
+	 */
+	private ParkingArea toParkingArea(final ParkingLot pl) {
+
+		// create a new parking area object for this parking lot and put it into the container
+		final ParkingArea area = new ParkingArea();
+
+		area.setName(pl.getParkingLotAddress());
+		area.setKind("PP");
+
+		// ... get a list of all single parking spaces
+		final List<eu.spitfire_project.smart_service_proxy.backends.parking.generated.ParkingSpace> parkingLotSpaces = pl.getParkingSpaces();
+
+		// if there are parking spaces accessible ...
+		if ((parkingLotSpaces != null) && (parkingLotSpaces.size() > 0)) {
+
+			// ... use the first parking space to set the geo location of the whole
+			// parking space
+			final eu.spitfire_project.smart_service_proxy.backends.parking.generated.ParkingSpace firstSpace = parkingLotSpaces.get(0);
+			area.setGeo(new GeoInfo(firstSpace.getParkingSpaceCoordinates().getLatitude(), firstSpace.getParkingSpaceCoordinates().getLongitude()));
+
+			// ... and set the number of single spaces as the parking area's size
+			area.setSpaces(parkingLotSpaces.size());
+
+			// create a new collection of parking spaces and add them to the recently created
+			// parking area
+			area.setParkingSpaces(toParkingSpaces(parkingLotSpaces));
+		}
+
+		return area;
+	}
+
+	// ------------------------------------------------------------------------
+	/**
+	 * Converts a collection of parking spaces which was fetched via web service to an internal
+	 * representation and returns the result
+	 * 
+	 * @param parkingLotSpaces
+	 *            A collection of parking spaces fetched via web service
+	 * @return An internal representation of the fetched list
+	 */
+	private Collection<ParkingSpace> toParkingSpaces(
+			final Collection<eu.spitfire_project.smart_service_proxy.backends.parking.generated.ParkingSpace> parkingLotSpaces) {
+		final Collection<ParkingSpace> parkingSpaces = new LinkedList<ParkingSpace>();
+
+		// add all parking spaces fetched via web service to the recently created parking
+		// area
+		int id = 0;
+		for (final eu.spitfire_project.smart_service_proxy.backends.parking.generated.ParkingSpace parkingSpace : parkingLotSpaces) {
+			final ParkingSpace space = new ParkingSpace();
+			parkingSpaces.add(space);
+
+			space.setLocationCoordinates(new GeoInfo(parkingSpace.getParkingSpaceCoordinates().getLatitude(), parkingSpace
+					.getParkingSpaceCoordinates().getLongitude()));
+			space.setStatus("FREE".equals(parkingSpace.getCurrentStatus()) ? ParkingLotStatus.FREE : ParkingLotStatus.OCCUPIED);
+			// only uncovered parking spots
+			space.setType("PP");
+			// web service returns either STANDARD or PEOPLE WITH DISABILITIES
+			if (!"STANDARD".equals(parkingSpace.getParkingSpaceType().getParkingSpaceType())) {
+				space.setHandicapped(Boolean.TRUE);
+			}
+			space.setId(String.valueOf(id++));
+
+		}
+		return parkingSpaces;
 	}
 }
