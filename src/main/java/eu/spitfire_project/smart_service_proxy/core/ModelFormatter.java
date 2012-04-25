@@ -105,9 +105,9 @@ public class ModelFormatter extends SimpleChannelHandler {
                         lang = "TURTLE";
                         mimeType = "text/turtle";
                     }
-					else if(acceptHeader.indexOf("text/json") != -1){
+					else if(acceptHeader.indexOf("application/json") != -1){
 					    lang = "RDF/JSON";
-					    mimeType = "text/json";
+					    mimeType = "application/json";
 					}
 				}
 			}
