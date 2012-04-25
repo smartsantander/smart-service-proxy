@@ -1,9 +1,12 @@
 package eu.spitfire_project.smart_service_proxy.backends.parking;
 
+import java.io.UnsupportedEncodingException;
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.net.URLEncoder;
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.LinkedList;
 
 import org.apache.commons.lang3.StringEscapeUtils;
 import org.apache.log4j.Logger;
@@ -24,59 +27,51 @@ import eu.spitfire_project.smart_service_proxy.core.Backend;
 public abstract class ParkingBackend extends Backend {
 
 	private static Logger log = Logger.getLogger(ParkingHLBackend.class.getName());
-	protected final HashMap<URI, Model> resources = new HashMap<URI, Model>();
-
+	
 	/**
-	 * Creates  jena models for provided parking areas and parking lots, registers them as resources
+	 * Creates jena models for provided parking areas and parking lots
 	 * 
 	 * @param locationPrefix
 	 *            Indicates the parking areas' location (e.g., a city name)
 	 * @param parkingAreas
 	 *            A collection of parking areas
-	 * @return a Jena model for the provided parking areas
-	 * @throws URISyntaxException 
+	 * @return Jena models for the provided parking areas and parking lots
+	 * @throws URISyntaxException
 	 */
-	protected Model createModel(final String locationPrefix, final Collection<ParkingArea> parkingAreas) throws URISyntaxException {
-		//TODO FMA: rename to createModelsAndRegisterResources
-		final Model model = ModelFactory.createDefaultModel();
+	protected Collection<Model> createModels(final Collection<ParkingArea> parkingAreas) throws URISyntaxException {
+		Collection<Model> models = new LinkedList<Model>();
 
-		for (final ParkingArea parkingArea : parkingAreas) {
-			//create a model for the parking area and register it as resource
-			String name = StringEscapeUtils.escapeHtml4(parkingArea.getName());
-			Resource areaType = "PH".equals(parkingArea.getKind()) ? ParkingVocab.PARKING_INDOOR_AREA : ParkingVocab.PARKING_OUTDOOR_AREA;
-			//TODO FMA: extract base uri as parameter
-			final Resource parkingResource = model.createResource("http://www.smarthl.de/parking/" + locationPrefix + "/" + name, areaType);
-			//TODO Sebastian: pull up in calling method
-			URI resourceURI = new URI(entityManager.getURIBase() + pathPrefix + name);
-			registerResource(resourceURI, model);
-			
-			//create models for the single parking lots and register them as resources
-			for (ParkingSpace parkingLot : parkingArea.getParkingSpaces()) {
-				Model parkingLotModel = ModelFactory.createDefaultModel();
-				// TODO FMA: extract base uri as parameter
-				Resource parkingLotRes = createParkingLotResource(locationPrefix, parkingLotModel, name, parkingLot, "http://www.smarthl.de/parking/");
-				parkingResource.addProperty(DULVocab.HAS_PART, parkingLotRes);
-				//TODO Sebastian: pull up in calling method
-				resourceURI = new URI(entityManager.getURIBase() + pathPrefix + name);
-				registerResource(resourceURI, parkingLotModel);
+		try {
+			for (final ParkingArea parkingArea : parkingAreas) {
+				// create a model for the parking area
+				String name;
+				Model parkingAreaModel = ModelFactory.createDefaultModel();
+				models.add(parkingAreaModel);
+				name = URLEncoder.encode(parkingArea.getName(), "utf8");
+				Resource areaType = "PH".equals(parkingArea.getKind()) ? ParkingVocab.PARKING_INDOOR_AREA : ParkingVocab.PARKING_OUTDOOR_AREA;
+				final Resource parkingResource = parkingAreaModel.createResource(entityManager.getURIBase() + pathPrefix  + name, areaType);
+
+				// create models for the single parking lots of the current parking area
+				for (ParkingSpace parkingLot : parkingArea.getParkingSpaces()) {
+					Model parkingLotModel = ModelFactory.createDefaultModel();
+					models.add(parkingLotModel);
+					Resource parkingLotRes = createParkingLotResource(parkingLotModel, name, parkingLot);
+					parkingResource.addProperty(DULVocab.HAS_PART, parkingLotRes);
+				}
+
 			}
+		} catch (UnsupportedEncodingException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+
 		}
-		return model;
-	}
-
-	//TODO Sebastian: remove
-	private void registerResource(URI resourceURI, Model model) {
-			resources.put(resourceURI, model);
-			if (log.isDebugEnabled()) {
-				log.debug("Successfully added new resource at " + resourceURI);
-			}
-		
+		return models;
 
 	}
 
-	private Resource createParkingLotResource(final String locationPrefix, final Model model, String name, ParkingSpace parkingLot, String baseURI) {
+	private Resource createParkingLotResource(final Model model, String name, ParkingSpace parkingLot) {
 		Resource parkingLotType = "PP".equals(parkingLot.getType()) ? ParkingVocab.PARKING_UNCOVERED_LOT : ParkingVocab.PARKING_COVERED_LOT;
-		final Resource plr = model.createResource(baseURI + locationPrefix + "/" + name + "/" + parkingLot.getId(), parkingLotType);
+		final Resource plr = model.createResource(entityManager.getURIBase() + pathPrefix +  name + "/" + parkingLot.getId(), parkingLotType);
 		plr.addProperty(ParkingVocab.PARKINGID, parkingLot.getId());
 		if (ParkingLotStatus.FREE.equals(parkingLot.getStatus())) {
 			plr.addProperty(ParkingVocab.PARKINGSTATUS, ParkingVocab.PARKING_AVAILABLE_LOT);
@@ -91,5 +86,15 @@ public abstract class ParkingBackend extends Backend {
 			plr.addProperty(Wgs84_posVocab.LONG, String.valueOf(parkingLot.getLocationCoordinates().getLng()));
 		}
 		return plr;
+	}
+
+	protected abstract Model addToResources(URI uri, Model model);
+	
+	protected void registerModels(Collection<Model> models) throws URISyntaxException {
+		for (Model model : models) {
+			//assumption: each model only contains one resource
+			URI uri = new URI(model.listStatements().toList().get(0).getSubject().getURI());
+			addToResources(uri, model);			
+		}
 	}
 }

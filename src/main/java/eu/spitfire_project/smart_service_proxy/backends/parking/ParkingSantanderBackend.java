@@ -68,8 +68,8 @@ public class ParkingSantanderBackend extends ParkingBackend {
 	/** Instance to log messages */
 	private static Logger log = Logger.getLogger(ParkingSantanderBackend.class.getName());
 
-	/** A mapping between Jena models and the URI to access them */
-	private final HashMap<URI, Model> resources = new HashMap<URI, Model>();
+	protected final HashMap<URI, Model> resources = new HashMap<URI, Model>();
+
 
 	/** Inicates the time, new values are considered as valid */
 	private int cachingInterval = 0;
@@ -87,7 +87,8 @@ public class ParkingSantanderBackend extends ParkingBackend {
 	 */
 	public ParkingSantanderBackend(final Configuration config) throws ConfigurationException {
 		super();
-		cachingInterval = config.getInt("parkingSantanderCachingMinutes") * 1000 * 60;
+		//TODO FMA: pull up in super class (messageReceived then should be pulled up too)
+		cachingInterval = config.containsKey("parkingSantanderCachingMinutes") ?  config.getInt("parkingSantanderCachingMinutes") * 1000 * 60 : 5 * 60 * 1000;
 	}
 
 	@Override
@@ -159,13 +160,8 @@ public class ParkingSantanderBackend extends ParkingBackend {
 
 			try {
 				// create a Jena model based on the created parking areas
-				final Model model = createModel("santander", parkingAreas);
-				// create an URI to access the created model
-				final URI resourceURI = new URI(entityManager.getURIBase() + pathPrefix + "Santander");
-				resources.put(resourceURI, model);
-				if (ParkingSantanderBackend.log.isDebugEnabled()) {
-					ParkingSantanderBackend.log.debug("Successfully added new resource at " + resourceURI);
-				}
+				final Collection<Model> models = createModels(parkingAreas);
+				registerModels(models);
 			} catch (final URISyntaxException e) {
 				ParkingSantanderBackend.log.fatal("This should never happen.", e);
 			}
@@ -274,5 +270,10 @@ public class ParkingSantanderBackend extends ParkingBackend {
 
 		}
 		return parkingSpaces;
+	}
+
+	@Override
+	protected Model addToResources(URI uri, Model model) {
+		return resources.put(uri, model);
 	}
 }

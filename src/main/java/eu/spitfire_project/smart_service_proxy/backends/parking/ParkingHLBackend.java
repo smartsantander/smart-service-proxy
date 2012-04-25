@@ -69,6 +69,8 @@ public class ParkingHLBackend extends ParkingBackend {
 
 	private static Logger log = Logger.getLogger(ParkingHLBackend.class.getName());
 
+	protected final HashMap<URI, Model> resources = new HashMap<URI, Model>();
+
 	
 	private final String paringkURL;
 
@@ -122,14 +124,10 @@ public class ParkingHLBackend extends ParkingBackend {
 			}
 
 			// create resources
-			final Model model = createModel("hl", parkings.getParkings());
-
-			final URI resourceURI = new URI(entityManager.getURIBase() + pathPrefix + "HL");
-			resources.put(resourceURI, model);
-			//
-			if (ParkingHLBackend.log.isDebugEnabled()) {
-				ParkingHLBackend.log.debug("Successfully added new resource at " + resourceURI);
-			}
+			final Collection<Model> models = createModels(parkings.getParkings());
+			registerModels(models);
+			
+			
 
 		} catch (final URISyntaxException e) {
 			ParkingHLBackend.log.fatal("This should never happen.", e);
@@ -186,5 +184,10 @@ public class ParkingHLBackend extends ParkingBackend {
 	@Override
 	public Set<URI> getResources() {
 		return resources.keySet();
+	}
+
+	@Override
+	protected Model addToResources(URI uri, Model model) {
+		return resources.put(uri, model);
 	}
 }
