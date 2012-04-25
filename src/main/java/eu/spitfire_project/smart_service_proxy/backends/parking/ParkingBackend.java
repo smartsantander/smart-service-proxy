@@ -29,7 +29,7 @@ public abstract class ParkingBackend extends Backend {
 	private static Logger log = Logger.getLogger(ParkingHLBackend.class.getName());
 	
 	/**
-	 * Creates jena models for provided parking areas and parking lots
+	 * Creates jena models for provided parking areas and parking spaces
 	 * 
 	 * @param locationPrefix
 	 *            Indicates the parking areas' location (e.g., a city name)
@@ -51,11 +51,11 @@ public abstract class ParkingBackend extends Backend {
 				Resource areaType = "PH".equals(parkingArea.getKind()) ? ParkingVocab.PARKING_INDOOR_AREA : ParkingVocab.PARKING_OUTDOOR_AREA;
 				final Resource parkingResource = parkingAreaModel.createResource(entityManager.getURIBase() + pathPrefix  + name, areaType);
 
-				// create models for the single parking lots of the current parking area
-				for (ParkingSpace parkingLot : parkingArea.getParkingSpaces()) {
+				// create models for the single parking space of the current parking area
+				for (ParkingSpace parkingSpace : parkingArea.getParkingSpaces()) {
 					Model parkingLotModel = ModelFactory.createDefaultModel();
 					models.add(parkingLotModel);
-					Resource parkingLotRes = createParkingLotResource(parkingLotModel, name, parkingLot);
+					Resource parkingLotRes = createParkingSpaceResource(parkingLotModel, name, parkingSpace);
 					parkingResource.addProperty(DULVocab.HAS_PART, parkingLotRes);
 				}
 
@@ -69,21 +69,21 @@ public abstract class ParkingBackend extends Backend {
 
 	}
 
-	private Resource createParkingLotResource(final Model model, String name, ParkingSpace parkingLot) {
-		Resource parkingLotType = "PP".equals(parkingLot.getType()) ? ParkingVocab.PARKING_UNCOVERED_LOT : ParkingVocab.PARKING_COVERED_LOT;
-		final Resource plr = model.createResource(entityManager.getURIBase() + pathPrefix +  name + "/" + parkingLot.getId(), parkingLotType);
-		plr.addProperty(ParkingVocab.PARKINGID, parkingLot.getId());
-		if (ParkingLotStatus.FREE.equals(parkingLot.getStatus())) {
+	private Resource createParkingSpaceResource(final Model model, String name, ParkingSpace parkingSpace) {
+		Resource parkingLotType = "PP".equals(parkingSpace.getType()) ? ParkingVocab.PARKING_UNCOVERED_LOT : ParkingVocab.PARKING_COVERED_LOT;
+		final Resource plr = model.createResource(entityManager.getURIBase() + pathPrefix +  name + "/" + parkingSpace.getId(), parkingLotType);
+		plr.addProperty(ParkingVocab.PARKINGID, parkingSpace.getId());
+		if (ParkingLotStatus.FREE.equals(parkingSpace.getStatus())) {
 			plr.addProperty(ParkingVocab.PARKINGSTATUS, ParkingVocab.PARKING_AVAILABLE_LOT);
 		} else {
 			plr.addProperty(ParkingVocab.PARKINGSTATUS, ParkingVocab.PARKING_UNAVAILABLE_LOT);
 		}
-		if (Boolean.TRUE.equals(parkingLot.getHandicapped())) {
+		if (Boolean.TRUE.equals(parkingSpace.getHandicapped())) {
 			plr.addProperty(ParkingVocab.PARKINGSTATUS, ParkingVocab.PARKING_RESERVED_LOT);
 		}
-		if (null != parkingLot.getLocationCoordinates()) {
-			plr.addProperty(Wgs84_posVocab.LAT, String.valueOf(parkingLot.getLocationCoordinates().getLat()));
-			plr.addProperty(Wgs84_posVocab.LONG, String.valueOf(parkingLot.getLocationCoordinates().getLng()));
+		if (null != parkingSpace.getLocationCoordinates()) {
+			plr.addProperty(Wgs84_posVocab.LAT, String.valueOf(parkingSpace.getLocationCoordinates().getLat()));
+			plr.addProperty(Wgs84_posVocab.LONG, String.valueOf(parkingSpace.getLocationCoordinates().getLng()));
 		}
 		return plr;
 	}
