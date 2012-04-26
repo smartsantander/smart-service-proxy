@@ -123,6 +123,9 @@ public class ModelFormatter extends SimpleChannelHandler {
 			response.setHeader(CONTENT_TYPE, mimeType + "; charset=utf-8");
 			response.setContent(ChannelBuffers.copiedBuffer(os.toString(), Charset.forName("UTF-8")));
 			response.setHeader(CONTENT_LENGTH, response.getContent().readableBytes());
+			//allow cross origin resource sharing (CORS)
+			response.setHeader("Access-Control-Allow-Origin","*");
+			response.setHeader("Access-Control-Allow-Headers", "x-requested-with");
             Channels.write(ctx, me.getFuture(), response);
 		}
 		else {
