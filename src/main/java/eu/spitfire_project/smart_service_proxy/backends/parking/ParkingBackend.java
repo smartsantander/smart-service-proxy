@@ -104,6 +104,7 @@ public abstract class ParkingBackend extends Backend {
 			
 			
 			if (null != parkingArea.getGeo()) {
+				parkingAreaResource.addProperty(ParkingVocab.PARKINGID,parkingArea.getName());
 				parkingAreaResource.addProperty(Wgs84_posVocab.LAT, String.valueOf(parkingArea.getGeo().getLat()));
 				parkingAreaResource.addProperty(Wgs84_posVocab.LONG, String.valueOf(parkingArea.getGeo().getLng()));
 				parkingAreaResource.addProperty(ParkingVocab.PARKINGAREA_STATUS,occupationLevels.get("level100"));
