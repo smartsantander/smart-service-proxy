@@ -16,6 +16,7 @@ public class ParkingArea {
 	private int free;
 	private int spaces;
 	private String status;
+	private String city;
 
 	private Collection<ParkingSpace> parkingSpaces;
 
@@ -82,6 +83,22 @@ public class ParkingArea {
 	 */
 	public void setParkingSpaces(final Collection<ParkingSpace> parkingSpaces) {
 		this.parkingSpaces = parkingSpaces;
+	}
+
+	// ------------------------------------------------------------------------
+	/**
+	 * @return the city
+	 */
+	public String getCity() {
+		return city;
+	}
+
+	// ------------------------------------------------------------------------
+	/**
+	 * @param city the city to set
+	 */
+	public void setCity(String city) {
+		this.city = city;
 	}
 
 	@Override
