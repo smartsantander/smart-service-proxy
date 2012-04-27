@@ -7,8 +7,8 @@ import java.net.URLEncoder;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.LinkedList;
+import java.util.Map;
 
-import org.apache.commons.lang3.StringEscapeUtils;
 import org.apache.log4j.Logger;
 
 import com.hp.hpl.jena.rdf.model.Model;
@@ -71,6 +71,49 @@ public abstract class ParkingBackend extends Backend {
 		}
 		return models;
 
+	}
+	
+	/**
+	 * Just for demo, should be replaced by SPARQL queries
+	 * @param parkingAreas 
+	 * @param cityName 
+	 * @return 
+	 * @throws UnsupportedEncodingException 
+	 * @deprecated
+	 */
+	protected Model createCityModel(Collection<ParkingArea> parkingAreas, String cityName) throws UnsupportedEncodingException{
+		Model cityModel = ModelFactory.createDefaultModel();
+		
+		//Resource city = cityModel.createResource(entityManager.getURIBase() + pathPrefix + cityName);
+		
+		Map<String,Resource> occupationLevels = new HashMap<String, Resource>();
+		
+		for (int i = 0; i <=100; i+=25) {
+			Resource occupationLevel = cityModel.createResource(entityManager.getURIBase() + pathPrefix + "level"+i, ParkingVocab.PARKING_OCCUPATION_LEVEL);
+			occupationLevels.put("level"+i,occupationLevel);
+			occupationLevel.addProperty(Muo_vocabVocab.MEASURED_IN, Ucum_instancesVocab.PERCENT);
+			occupationLevel.addProperty(DULVocab.HAS_DATA_VALUE, String.valueOf(i));
+		}
+		
+		for (ParkingArea parkingArea : parkingAreas) {
+			
+			String name = URLEncoder.encode(parkingArea.getName(), "utf8");
+			Resource areaType = "PH".equals(parkingArea.getKind()) ? ParkingVocab.PARKING_INDOOR_AREA : ParkingVocab.PARKING_OUTDOOR_AREA;
+			final Resource parkingAreaResource = cityModel.createResource(entityManager.getURIBase() + pathPrefix + name, areaType);
+			
+			
+			
+			if (null != parkingArea.getGeo()) {
+				parkingAreaResource.addProperty(Wgs84_posVocab.LAT, String.valueOf(parkingArea.getGeo().getLat()));
+				parkingAreaResource.addProperty(Wgs84_posVocab.LONG, String.valueOf(parkingArea.getGeo().getLng()));
+				parkingAreaResource.addProperty(ParkingVocab.PARKINGAREA_STATUS,occupationLevels.get("level100"));
+				
+			}
+			//city.addProperty(DULVocab.HAS_PART, parkingAreaResource);
+			
+		}
+		
+		return cityModel;
 	}
 
 	private Resource createParkingSpaceResource(final Model model, String name, ParkingSpace parkingSpace) {

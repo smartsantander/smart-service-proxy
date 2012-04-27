@@ -108,7 +108,7 @@ public class ParkingHLBackend extends ParkingBackend {
 				throw new IOException("No parkings could not be parsed from: " + json);
 			}
 
-			// create virtual/dummy parking lots as we have only the total amount and free amount in Lübeck
+			// create virtual/dummy parking lots as we have only the total amount and free amount in Lubeck
 			for (ParkingArea parkingArea : parkings.getParkings()) {
 				Collection<ParkingSpace> psl = new ArrayList<ParkingSpace>(parkingArea.getSpaces());
 
@@ -127,6 +127,9 @@ public class ParkingHLBackend extends ParkingBackend {
 			final Collection<Model> models = createModels(parkings.getParkings());
 			registerModels(models);
 			
+			URI uri = new URI(entityManager.getURIBase() + pathPrefix + "Luebeck");
+			addToResources(uri, createCityModel(parkings.getParkings(), "Luebeck"));
+			log.debug("registered city: " + uri);
 			
 
 		} catch (final URISyntaxException e) {
