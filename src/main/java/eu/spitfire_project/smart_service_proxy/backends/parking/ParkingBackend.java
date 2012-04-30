@@ -112,15 +112,6 @@ public abstract class ParkingBackend extends Backend {
 		
 		//Resource city = cityModel.createResource(entityManager.getURIBase() + pathPrefix + cityName);
 		
-//		Map<String,Resource> occupationLevels = new HashMap<String, Resource>();
-//		
-//		for (int i = 0; i <=100; i+=25) {
-//			Resource occupationLevel = cityModel.createResource(entityManager.getURIBase() + pathPrefix + "level"+i, ParkingVocab.PARKING_OCCUPATION_LEVEL);
-//			occupationLevels.put("level"+i,occupationLevel);
-//			occupationLevel.addProperty(Muo_vocabVocab.MEASURED_IN, Ucum_instancesVocab.PERCENT);
-//			occupationLevel.addProperty(DULVocab.HAS_DATA_VALUE, String.valueOf(i));
-//		}
-		
 		for (ParkingArea parkingArea : parkingAreas) {
 			
 			String name = URLEncoder.encode(parkingArea.getName(), "utf8");
@@ -133,10 +124,28 @@ public abstract class ParkingBackend extends Backend {
 				parkingAreaResource.addProperty(ParkingVocab.PARKINGID,parkingArea.getName());
 				parkingAreaResource.addProperty(Wgs84_posVocab.LAT, String.valueOf(parkingArea.getGeo().getLat()));
 				parkingAreaResource.addProperty(Wgs84_posVocab.LONG, String.valueOf(parkingArea.getGeo().getLng()));
-				parkingAreaResource.addProperty(ParkingVocab.PARKINGAREA_STATUS,occupationLevels.get("level100"));
-				parkingAreaResource.addProperty(ParkingVocab.PARKINGAREA_STATUS,"closed");
-				
 			}
+			
+			// if no parking spaces are available, or the submitted state already marks
+			// the area as closed, the status property is not set
+			if (parkingArea.getSpaces() > 0 || parkingArea.getStatus().equals("closed")){
+				
+				double occupationLevel = 1.0-(double)parkingArea.getFree()/(double)parkingArea.getSpaces();
+				
+				double levelBarrier = 1.0/(occupationLevels.size()-1);
+				
+				for (int i = 0; i < occupationLevels.size(); i++) {
+					int val = (int) (levelBarrier*i*100);
+					if (occupationLevel <= levelBarrier*i){
+						parkingAreaResource.addProperty(ParkingVocab.PARKINGAREA_STATUS,occupationLevels.get("level"+val));
+						System.out.println("level"+val);
+						break;
+					}
+				}
+			}else {
+				parkingAreaResource.addProperty(ParkingVocab.PARKINGAREA_STATUS,"closed");
+			}
+			
 			//city.addProperty(DULVocab.HAS_PART, parkingAreaResource);
 			
 		}
@@ -148,7 +157,6 @@ public abstract class ParkingBackend extends Backend {
 		
 		for (int i = 0; i <=100; i+=25) {
 			Resource occupationLevel = occupationLevelModel.createResource(entityManager.getURIBase() + pathPrefix + "level"+i, ParkingVocab.PARKING_OCCUPATION_LEVEL);
-			occupationLevels.put("level"+i,occupationLevel);
 			occupationLevel.addProperty(Muo_vocabVocab.MEASURED_IN, Ucum_instancesVocab.PERCENT);
 			occupationLevel.addProperty(DULVocab.HAS_DATA_VALUE, String.valueOf(i));
 		}
