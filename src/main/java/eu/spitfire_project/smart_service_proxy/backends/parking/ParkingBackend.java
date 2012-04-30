@@ -17,6 +17,7 @@ import com.hp.hpl.jena.rdf.model.Resource;
 
 import eu.spitfire_project.smart_service_proxy.backends.parking.ParkingSpace.ParkingLotStatus;
 import eu.spitfire_project.smart_service_proxy.core.Backend;
+import eu.spitfire_project.smart_service_proxy.core.EntityManager;
 
 /**
  * Base class for all backends which store and provide information about parking areas and parking spaces.
@@ -26,7 +27,28 @@ import eu.spitfire_project.smart_service_proxy.core.Backend;
  */
 public abstract class ParkingBackend extends Backend {
 
-	private static Logger log = Logger.getLogger(ParkingHLBackend.class.getName());
+	private static final Logger log = Logger.getLogger(ParkingHLBackend.class.getName());
+	
+	private static Model occupationLevelModel = null;
+	
+	private static final Map<String,Resource> occupationLevels = new HashMap<String, Resource>();
+	
+	
+	@Override
+	public void bind(EntityManager em) {
+		super.bind(em);
+		
+		if (occupationLevelModel == null){
+			occupationLevelModel = ModelFactory.createDefaultModel();
+			try {
+				addToResources(new URI(entityManager.getURIBase() + pathPrefix + "occupationLevels"), createOccupationLevelModel());
+			} catch (UnsupportedEncodingException e) {
+				log.error(e,e);
+			} catch (URISyntaxException e) {
+				log.error(e,e);
+			}
+		}
+	}
 
 	/**
 	 * Creates jena models for provided parking areas and parking spaces
@@ -90,14 +112,14 @@ public abstract class ParkingBackend extends Backend {
 		
 		//Resource city = cityModel.createResource(entityManager.getURIBase() + pathPrefix + cityName);
 		
-		Map<String,Resource> occupationLevels = new HashMap<String, Resource>();
-		
-		for (int i = 0; i <=100; i+=25) {
-			Resource occupationLevel = cityModel.createResource(entityManager.getURIBase() + pathPrefix + "level"+i, ParkingVocab.PARKING_OCCUPATION_LEVEL);
-			occupationLevels.put("level"+i,occupationLevel);
-			occupationLevel.addProperty(Muo_vocabVocab.MEASURED_IN, Ucum_instancesVocab.PERCENT);
-			occupationLevel.addProperty(DULVocab.HAS_DATA_VALUE, String.valueOf(i));
-		}
+//		Map<String,Resource> occupationLevels = new HashMap<String, Resource>();
+//		
+//		for (int i = 0; i <=100; i+=25) {
+//			Resource occupationLevel = cityModel.createResource(entityManager.getURIBase() + pathPrefix + "level"+i, ParkingVocab.PARKING_OCCUPATION_LEVEL);
+//			occupationLevels.put("level"+i,occupationLevel);
+//			occupationLevel.addProperty(Muo_vocabVocab.MEASURED_IN, Ucum_instancesVocab.PERCENT);
+//			occupationLevel.addProperty(DULVocab.HAS_DATA_VALUE, String.valueOf(i));
+//		}
 		
 		for (ParkingArea parkingArea : parkingAreas) {
 			
@@ -120,6 +142,25 @@ public abstract class ParkingBackend extends Backend {
 		}
 		
 		return cityModel;
+	}
+	
+	protected Model createOccupationLevelModel() throws UnsupportedEncodingException{
+		
+		for (int i = 0; i <=100; i+=25) {
+			Resource occupationLevel = occupationLevelModel.createResource(entityManager.getURIBase() + pathPrefix + "level"+i, ParkingVocab.PARKING_OCCUPATION_LEVEL);
+			occupationLevels.put("level"+i,occupationLevel);
+			occupationLevel.addProperty(Muo_vocabVocab.MEASURED_IN, Ucum_instancesVocab.PERCENT);
+			occupationLevel.addProperty(DULVocab.HAS_DATA_VALUE, String.valueOf(i));
+		}
+		
+		return occupationLevelModel;
+	}
+	
+	private Model addToOccupationLevelModel() throws UnsupportedEncodingException{
+		
+		
+		
+		return null;
 	}
 
 	private Resource createParkingSpaceResource(final Model model, String name, ParkingSpace parkingSpace) {
