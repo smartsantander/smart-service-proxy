@@ -41,7 +41,7 @@ public abstract class ParkingBackend extends Backend {
 		if (occupationLevelModel == null){
 			occupationLevelModel = ModelFactory.createDefaultModel();
 			try {
-				addToResources(new URI(entityManager.getURIBase() + pathPrefix + "occupationLevels"), createOccupationLevelModel());
+				addToResources(new URI(entityManager.getURIBase() + pathPrefix + "occupationLevels"), createOccupationLevelModelOverview());
 			} catch (UnsupportedEncodingException e) {
 				log.error(e,e);
 			} catch (URISyntaxException e) {
@@ -153,15 +153,29 @@ public abstract class ParkingBackend extends Backend {
 		return cityModel;
 	}
 	
-	protected Model createOccupationLevelModel() throws UnsupportedEncodingException{
+	protected Model createOccupationLevelModelOverview() throws UnsupportedEncodingException, URISyntaxException{
 		
 		for (int i = 0; i <=100; i+=25) {
 			Resource occupationLevel = occupationLevelModel.createResource(entityManager.getURIBase() + pathPrefix + "level"+i, ParkingVocab.PARKING_OCCUPATION_LEVEL);
 			occupationLevel.addProperty(Muo_vocabVocab.MEASURED_IN, Ucum_instancesVocab.PERCENT);
 			occupationLevel.addProperty(DULVocab.HAS_DATA_VALUE, String.valueOf(i));
+			createandRegisterOccupationLevelModel(i);
 		}
 		
 		return occupationLevelModel;
+	}
+	
+	protected Model createandRegisterOccupationLevelModel(int level) throws UnsupportedEncodingException, URISyntaxException{
+		
+		Model occupationLevelModel = ModelFactory.createDefaultModel();
+		Resource occupationLevel = occupationLevelModel.createResource(entityManager.getURIBase() + pathPrefix + "level"+level, ParkingVocab.PARKING_OCCUPATION_LEVEL);
+		occupationLevels.put("level"+level,occupationLevel);
+		occupationLevel.addProperty(Muo_vocabVocab.MEASURED_IN, Ucum_instancesVocab.PERCENT);
+		occupationLevel.addProperty(DULVocab.HAS_DATA_VALUE, String.valueOf(level));
+		addToResources(new URI(occupationLevel.getURI()), occupationLevelModel);
+		
+		return occupationLevelModel;
+			
 	}
 	
 	private Model addToOccupationLevelModel() throws UnsupportedEncodingException{
