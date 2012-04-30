@@ -55,6 +55,10 @@ public abstract class ParkingBackend extends Backend {
 					parkingResource.addProperty(Wgs84_posVocab.LONG, String.valueOf(parkingArea.getGeo().getLng()));
 				}
 
+				if (parkingArea.getCity() != null){
+					parkingResource.addProperty(Wgs84_posVocab.LOCATION, parkingArea.getCity());
+				}
+				
 				// create models for the single parking space of the current parking area
 				for (ParkingSpace parkingSpace : parkingArea.getParkingSpaces()) {
 					Model parkingLotModel = ModelFactory.createDefaultModel();
@@ -108,6 +112,7 @@ public abstract class ParkingBackend extends Backend {
 				parkingAreaResource.addProperty(Wgs84_posVocab.LAT, String.valueOf(parkingArea.getGeo().getLat()));
 				parkingAreaResource.addProperty(Wgs84_posVocab.LONG, String.valueOf(parkingArea.getGeo().getLng()));
 				parkingAreaResource.addProperty(ParkingVocab.PARKINGAREA_STATUS,occupationLevels.get("level100"));
+				parkingAreaResource.addProperty(ParkingVocab.PARKINGAREA_STATUS,"closed");
 				
 			}
 			//city.addProperty(DULVocab.HAS_PART, parkingAreaResource);
