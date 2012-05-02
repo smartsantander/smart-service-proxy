@@ -24,6 +24,7 @@
  */
 package eu.spitfire_project.smart_service_proxy.backends.parking;
 
+import java.io.UnsupportedEncodingException;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.Collection;
@@ -162,8 +163,16 @@ public class ParkingSantanderBackend extends ParkingBackend {
 				// create a Jena model based on the created parking areas
 				final Collection<Model> models = createModels(parkingAreas);
 				registerModels(models);
+
+				URI uri = new URI(entityManager.getURIBase() + pathPrefix + "Santander");
+				addToResources(uri, createCityModel(parkingAreas, "Santander"));
+				log.debug("registered city: " + uri);				
+				
 			} catch (final URISyntaxException e) {
 				ParkingSantanderBackend.log.fatal("This should never happen.", e);
+			} catch (UnsupportedEncodingException e) {
+				// TODO Auto-generated catch block
+				log.error(e,e);
 			}
 		}
 
@@ -232,6 +241,10 @@ public class ParkingSantanderBackend extends ParkingBackend {
 			// create a new collection of parking spaces and add them to the recently created
 			// parking area
 			area.setParkingSpaces(toParkingSpaces(parkingLotSpaces));
+			
+			area.setStatus("open");
+		}else{
+			area.setStatus("closed");
 		}
 
 		return area;
