@@ -121,7 +121,7 @@ public class ParkingHLBackend extends ParkingBackend {
 					psl.add(new ParkingSpace(String.valueOf(lot), parkingArea.getKind(), ParkingLotStatus.OCCUPIED, parkingArea.getGeo()));
 				}
 				parkingArea.setParkingSpaces(psl);
-				parkingArea.setCity("Lubeck");
+				parkingArea.setCity("Lübeck");
 			}
 
 			// create resources

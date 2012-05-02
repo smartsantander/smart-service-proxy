@@ -77,6 +77,8 @@ public class ParkingSantanderBackend extends ParkingBackend {
 
 	/** Indicates the currently cached values's expiration date */
 	private long cacheExpiration;
+	
+	private static final String cityName = "Santander";
 
 	/**
 	 * Returns a new backend instance and reads the actual configuration from ssp.properties
@@ -164,8 +166,8 @@ public class ParkingSantanderBackend extends ParkingBackend {
 				final Collection<Model> models = createModels(parkingAreas);
 				registerModels(models);
 
-				URI uri = new URI(entityManager.getURIBase() + pathPrefix + "Santander");
-				addToResources(uri, createCityModel(parkingAreas, "Santander"));
+				URI uri = new URI(entityManager.getURIBase() + pathPrefix + cityName);
+				addToResources(uri, createCityModel(parkingAreas, cityName));
 				log.debug("registered city: " + uri);				
 				
 			} catch (final URISyntaxException e) {
@@ -223,6 +225,7 @@ public class ParkingSantanderBackend extends ParkingBackend {
 
 		area.setName(pl.getParkingLotAddress());
 		area.setKind("PP");
+		area.setCity(cityName);
 
 		// ... get a list of all single parking spaces
 		final List<eu.spitfire_project.smart_service_proxy.backends.parking.generated.ParkingSpace> parkingLotSpaces = pl.getParkingSpaces();
