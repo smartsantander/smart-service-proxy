@@ -71,22 +71,17 @@ public abstract class ParkingBackend extends Backend {
 				models.add(parkingAreaModel);
 				name = URLEncoder.encode(parkingArea.getName(), "utf8");
 				Resource areaType = "PH".equals(parkingArea.getKind()) ? ParkingVocab.PARKING_INDOOR_AREA : ParkingVocab.PARKING_OUTDOOR_AREA;
-				final Resource parkingResource = parkingAreaModel.createResource(entityManager.getURIBase() + pathPrefix + name, areaType);
-				if (null != parkingArea.getGeo()) {
-					parkingResource.addProperty(Wgs84_posVocab.LAT, String.valueOf(parkingArea.getGeo().getLat()));
-					parkingResource.addProperty(Wgs84_posVocab.LONG, String.valueOf(parkingArea.getGeo().getLng()));
-				}
-
-				if (parkingArea.getCity() != null){
-					parkingResource.addProperty(Wgs84_posVocab.LOCATION, parkingArea.getCity());
-				}
+				final Resource parkingAreaResource = parkingAreaModel.createResource(entityManager.getURIBase() + pathPrefix + name, areaType);
+				
+				fillinParkingAreaResource(parkingArea, parkingAreaResource);
+				
 				
 				// create models for the single parking space of the current parking area
 				for (ParkingSpace parkingSpace : parkingArea.getParkingSpaces()) {
 					Model parkingLotModel = ModelFactory.createDefaultModel();
 					models.add(parkingLotModel);
 					Resource parkingLotRes = createParkingSpaceResource(parkingLotModel, name, parkingSpace);
-					parkingResource.addProperty(DULVocab.HAS_PART, parkingLotRes);
+					parkingAreaResource.addProperty(DULVocab.HAS_PART, parkingLotRes);
 				}
 
 			}
@@ -97,6 +92,44 @@ public abstract class ParkingBackend extends Backend {
 		}
 		return models;
 
+	}
+
+	// ------------------------------------------------------------------------
+	/**
+	 * @param parkingArea
+	 * @param parkingAreaResource
+	 */
+	private void fillinParkingAreaResource(final ParkingArea parkingArea, final Resource parkingAreaResource) {
+		if (null != parkingArea.getGeo()) {
+			parkingAreaResource.addProperty(Wgs84_posVocab.LAT, String.valueOf(parkingArea.getGeo().getLat()));
+			parkingAreaResource.addProperty(Wgs84_posVocab.LONG, String.valueOf(parkingArea.getGeo().getLng()));
+		}
+		
+
+		parkingAreaResource.addProperty(ParkingVocab.PARKINGID,parkingArea.getName());
+
+		if (parkingArea.getCity() != null){
+			parkingAreaResource.addProperty(Wgs84_posVocab.LOCATION, parkingArea.getCity());
+		}
+		
+		
+		if (null != parkingArea.getGeo()) {
+			parkingAreaResource.addProperty(ParkingVocab.PARKINGID,parkingArea.getName());
+			parkingAreaResource.addProperty(Wgs84_posVocab.LAT, String.valueOf(parkingArea.getGeo().getLat()));
+			parkingAreaResource.addProperty(Wgs84_posVocab.LONG, String.valueOf(parkingArea.getGeo().getLng()));
+		}
+		
+		
+		// if no parking spaces are available, or the submitted state already marks
+		// the area as closed, the status property is not set
+		if (parkingArea.getSpaces() > 0 && !parkingArea.getStatus().equals("closed")){
+			parkingAreaResource.addProperty(ParkingVocab.PARKINGFREE_LOTS,String.valueOf(parkingArea.getFree()));
+			parkingAreaResource.addProperty(ParkingVocab.PARKINGSIZE,String.valueOf(parkingArea.getSpaces()));
+			parkingAreaResource.addProperty(ParkingVocab.PARKINGAREA_STATUS,"open");
+			
+		}else {
+			parkingAreaResource.addProperty(ParkingVocab.PARKINGAREA_STATUS,"closed");
+		}
 	}
 	
 	/**
@@ -118,35 +151,7 @@ public abstract class ParkingBackend extends Backend {
 			Resource areaType = "PH".equals(parkingArea.getKind()) ? ParkingVocab.PARKING_INDOOR_AREA : ParkingVocab.PARKING_OUTDOOR_AREA;
 			final Resource parkingAreaResource = cityModel.createResource(entityManager.getURIBase() + pathPrefix + name, areaType);
 			
-			
-			
-			if (null != parkingArea.getGeo()) {
-				parkingAreaResource.addProperty(ParkingVocab.PARKINGID,parkingArea.getName());
-				parkingAreaResource.addProperty(Wgs84_posVocab.LAT, String.valueOf(parkingArea.getGeo().getLat()));
-				parkingAreaResource.addProperty(Wgs84_posVocab.LONG, String.valueOf(parkingArea.getGeo().getLng()));
-			}
-			
-			// if no parking spaces are available, or the submitted state already marks
-			// the area as closed, the status property is not set
-			if (parkingArea.getSpaces() > 0 || parkingArea.getStatus().equals("closed")){
-				
-				double occupationLevel = 1.0-(double)parkingArea.getFree()/(double)parkingArea.getSpaces();
-				
-				double levelBarrier = 1.0/(occupationLevels.size()-1);
-				
-				for (int i = 0; i < occupationLevels.size(); i++) {
-					int val = (int) (levelBarrier*i*100);
-					if (occupationLevel <= levelBarrier*i){
-						parkingAreaResource.addProperty(ParkingVocab.PARKINGAREA_STATUS,occupationLevels.get("level"+val));
-						System.out.println("level"+val);
-						break;
-					}
-				}
-			}else {
-				parkingAreaResource.addProperty(ParkingVocab.PARKINGAREA_STATUS,"closed");
-			}
-			
-			//city.addProperty(DULVocab.HAS_PART, parkingAreaResource);
+			fillinParkingAreaResource(parkingArea, parkingAreaResource);
 			
 		}
 		
