@@ -71,7 +71,6 @@ public class ParkingSantanderBackend extends ParkingBackend {
 
 	protected final HashMap<URI, Model> resources = new HashMap<URI, Model>();
 
-
 	/** Inicates the time, new values are considered as valid */
 	private int cachingInterval = 0;
 
@@ -245,6 +244,15 @@ public class ParkingSantanderBackend extends ParkingBackend {
 			// parking area
 			area.setParkingSpaces(toParkingSpaces(parkingLotSpaces));
 			
+			// get and set the number of available parking lots
+			int availableLots = 0;
+			for (ParkingSpace parkingSpace : area.getParkingSpaces()) {
+				if (parkingSpace.getStatus().equals(ParkingSpace.ParkingLotStatus.FREE)){
+					++availableLots;
+				}
+			}
+			area.setFree(availableLots);
+			
 			area.setStatus("open");
 		}else{
 			area.setStatus("closed");
@@ -269,17 +277,17 @@ public class ParkingSantanderBackend extends ParkingBackend {
 		// add all parking spaces fetched via web service to the recently created parking
 		// area
 		int id = 0;
-		for (final eu.spitfire_project.smart_service_proxy.backends.parking.generated.ParkingSpace parkingSpace : parkingLotSpaces) {
+		for (final eu.spitfire_project.smart_service_proxy.backends.parking.generated.ParkingSpace parkingLotSpace : parkingLotSpaces) {
 			final ParkingSpace space = new ParkingSpace();
 			parkingSpaces.add(space);
 
-			space.setLocationCoordinates(new GeoInfo(parkingSpace.getParkingSpaceCoordinates().getLatitude(), parkingSpace
+			space.setLocationCoordinates(new GeoInfo(parkingLotSpace.getParkingSpaceCoordinates().getLatitude(), parkingLotSpace
 					.getParkingSpaceCoordinates().getLongitude()));
-			space.setStatus("FREE".equals(parkingSpace.getCurrentStatus()) ? ParkingLotStatus.FREE : ParkingLotStatus.OCCUPIED);
+			space.setStatus("FREE".equals(parkingLotSpace.getCurrentStatus().getSpace()) ? ParkingLotStatus.FREE : ParkingLotStatus.OCCUPIED);
 			// only uncovered parking spots
 			space.setType("PP");
 			// web service returns either STANDARD or PEOPLE WITH DISABILITIES
-			if (!"STANDARD".equals(parkingSpace.getParkingSpaceType().getParkingSpaceType())) {
+			if (!"STANDARD".equals(parkingLotSpace.getParkingSpaceType().getParkingSpaceType())) {
 				space.setHandicapped(Boolean.TRUE);
 			}
 			space.setId(String.valueOf(id++));
