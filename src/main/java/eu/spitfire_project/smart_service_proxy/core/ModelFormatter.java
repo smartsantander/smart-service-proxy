@@ -88,6 +88,7 @@ public class ModelFormatter extends SimpleChannelHandler {
             
 			if(httpRequest != null) {
 				String acceptHeader = httpRequest.getHeader("Accept");
+						
 				if(acceptHeader != null) {
 					if(acceptHeader.indexOf("application/rdf+xml") != -1){
                         lang = "RDF/XML";

@@ -24,6 +24,7 @@
  */
 package eu.spitfire_project.smart_service_proxy.core;
 
+import eu.spitfire_project.smart_service_proxy.backends.coap.CoapBackend;
 import org.apache.log4j.Logger;
 import org.jboss.netty.channel.ChannelHandlerContext;
 import org.jboss.netty.channel.Channels;
@@ -40,6 +41,8 @@ import java.util.NoSuchElementException;
 import java.util.Set;
 import java.util.Vector;
 import java.util.concurrent.ConcurrentHashMap;
+
+import static org.jboss.netty.handler.codec.http.HttpHeaders.Names.*;
 
 //import eu.spitfire_project.smart_service_proxy.backends.coap.CoapBackend;
 
@@ -156,18 +159,43 @@ public class EntityManager extends SimpleChannelHandler {
 	 */
 	@Override
 	public void messageReceived(ChannelHandlerContext ctx, MessageEvent e) throws Exception {
-		// System.out.println("# EntityManager received msg: " + e.getMessage());
-		
-		if(!(e.getMessage() instanceof HttpRequest)) {
+
+        if(!(e.getMessage() instanceof HttpRequest)) {
 			super.messageReceived(ctx, e);
             return;
 		}
+
+        HttpRequest request = (HttpRequest) e.getMessage();
+
+        if(log.isDebugEnabled()){
+            log.debug("[EntityManager] Received HTTP request for target: " + request.getUri());
+        }
 		
-		HttpRequest request = (HttpRequest) e.getMessage();
-		
+        
 		URI uri = URI.create(uriBase).resolve(request.getUri()).normalize();
 		String path = uri.getRawPath();
 
+        String hostHeader = request.getHeader(HOST);
+        System.out.println("Host Header:" + hostHeader);
+        
+        System.out.println("Anzahl Backends: " + pathBackends.values().size());
+        
+        for(Backend backend : pathBackends.values()){
+            System.out.println("Class of Backend: " + backend.getClass());
+            if(backend instanceof CoapBackend){
+                CoapBackend coapBackend = (CoapBackend) backend;
+                System.out.println("CoapBackend Prefix: " + coapBackend.getIpv6Prefix());
+                System.out.println("HttpRequest Host Header: " + hostHeader);
+                if(hostHeader.indexOf(coapBackend.getIpv6Prefix()) != -1){
+                    ctx.getPipeline().addLast("Backend to handle request", coapBackend);
+                    System.out.println("EntityManager: Forward Request to CoapBackend!!!");
+                    ctx.sendUpstream(e);
+                    return;
+                }
+            }
+        }
+            
+        
         if(path.equals(listPath)) {
             // Handle request for resource at path ".well-known/core"
 			StringBuilder buf = new StringBuilder();
@@ -193,6 +221,8 @@ public class EntityManager extends SimpleChannelHandler {
                 for(int i = 0; i < 4; i++){
                     prefix += (components[i] + ":");
                 }
+                //Remove the last ":"
+                prefix = prefix.substring(0, prefix.length() - 1);
             }
 
             log.debug("Try to find backend for prefix " + prefix);
@@ -316,6 +346,8 @@ public class EntityManager extends SimpleChannelHandler {
 		if(b == null && elementSE.length() >= backendPrefixLength) {
 			URI uri = URI.create(uriBase).resolve(elementSE).normalize();
 			String path = uri.getRawPath();
+			
+			if(path.length() < backendPrefixLength) { return null; }
 
 			String pathPart = path.substring(0, backendPrefixLength);
 			b = pathBackends.get(pathPart);

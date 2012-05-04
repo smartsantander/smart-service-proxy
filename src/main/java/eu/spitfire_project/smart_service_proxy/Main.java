@@ -24,8 +24,14 @@
  */
 package eu.spitfire_project.smart_service_proxy;
 
+import java.io.File;
+import java.net.Inet6Address;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
+import java.net.URISyntaxException;
+import java.net.UnknownHostException;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.Executors;
 
 import org.apache.commons.configuration.Configuration;
@@ -39,7 +45,9 @@ import org.jboss.netty.channel.socket.nio.NioServerSocketChannelFactory;
 import org.jboss.netty.handler.execution.ExecutionHandler;
 import org.jboss.netty.handler.execution.OrderedMemoryAwareThreadPoolExecutor;
 
+import de.uniluebeck.itm.spitfire.gatewayconnectionmapper.ConnectionMapper;
 import eu.spitfire_project.smart_service_proxy.backends.coap.CoapBackend;
+import eu.spitfire_project.smart_service_proxy.backends.coap.CoapNodeRegistrationServer;
 import eu.spitfire_project.smart_service_proxy.backends.files.FilesBackend;
 import eu.spitfire_project.smart_service_proxy.backends.generator.GeneratorBackend;
 import eu.spitfire_project.smart_service_proxy.backends.parking.ParkingHLBackend;
@@ -54,112 +62,160 @@ import eu.spitfire_project.smart_service_proxy.core.HttpEntityManagerPipelineFac
 
 public class Main {
 
-	private static Logger log = Logger.getLogger(Main.class.getName());
+    private static Logger log = Logger.getLogger(Main.class.getName());
 
-	static {
-		Logger.getLogger("eu.spitfire_project.smart_service_proxy").addAppender(new ConsoleAppender(new SimpleLayout()));
-		Logger.getLogger("eu.spitfire_project.smart_service_proxy").setLevel(Level.DEBUG);
-	}
+    static{
+        Logger.getLogger("eu.spitfire_project.smart_service_proxy").addAppender(new ConsoleAppender(new SimpleLayout()));
+        Logger.getLogger("eu.spitfire_project.smart_service_proxy").setLevel(Level.DEBUG);
+    }
 
-	/**
-	 * @throws Exception
-	 *             might be everything
-	 */
-	public static void main(final String[] args) throws Exception {
+    /**
+     * @throws Exception might be everything
+     */
+    public static void main(String[] args) throws Exception {
 
-		final Configuration config = new PropertiesConfiguration("ssp.properties");
+        Configuration config = new PropertiesConfiguration("ssp.properties");
 
-		final ServerBootstrap bootstrap = new ServerBootstrap(new NioServerSocketChannelFactory(Executors.newCachedThreadPool(),
-				Executors.newCachedThreadPool()));
+        ServerBootstrap bootstrap = new ServerBootstrap(
+                new NioServerSocketChannelFactory(
+                        Executors.newCachedThreadPool(),
+                        Executors.newCachedThreadPool()));
 
-		final ExecutionHandler executionHandler = new ExecutionHandler(new OrderedMemoryAwareThreadPoolExecutor(config.getInt("threads", 30),
-				config.getLong("ram", 1024 * 1024), config.getLong("ram", 1024 * 1024)));
+        ExecutionHandler executionHandler = new ExecutionHandler(
+                new OrderedMemoryAwareThreadPoolExecutor(
+                        config.getInt("threads", 30),
+                        config.getLong("ram", 1024 * 1024),
+                        config.getLong("ram", 1024 * 1024)));
 
-		final HttpEntityManagerPipelineFactory empf = new HttpEntityManagerPipelineFactory(executionHandler);
-		bootstrap.setPipelineFactory(empf);
-		final int listenPort = config.getInt("listenPort", 8080);
-		bootstrap.bind(new InetSocketAddress(listenPort));
+        HttpEntityManagerPipelineFactory empf = new HttpEntityManagerPipelineFactory(executionHandler);
+        bootstrap.setPipelineFactory(empf);
+        int listenPort = config.getInt("listenPort", 8080);
+        bootstrap.bind(new InetSocketAddress(listenPort));
 
-		// Set URI base
-		final String defaultHost = InetAddress.getLocalHost().getCanonicalHostName();
-		String baseURIHost = config.getString("baseURIHost", defaultHost);
-		if (listenPort != 80) {
-			baseURIHost = baseURIHost + ":" + listenPort;
-		}
-		EntityManager.getInstance().setURIBase("http://" + baseURIHost);
+        //Set URI base
+        String defaultHost = InetAddress.getLocalHost().getCanonicalHostName();
+        String baseURIHost = config.getString("baseURIHost", defaultHost);
+        if(listenPort != 80){
+            baseURIHost = baseURIHost + ":" + listenPort;
+        }
+        EntityManager.getInstance().setURIBase("http://" + baseURIHost);
 
-		// Create enabled backends
-		Main.createBackends(config);
-	}
+        //Create enabled backends
+        createBackends(config);
 
-	// Create the backends enabled in ssp.properties
-	private static void createBackends(final Configuration config) throws Exception {
 
-		final String[] enabledBackends = config.getStringArray("enableBackend");
+        startConnectionMapper(config);
+    }
+    
+    private static void startConnectionMapper(Configuration config) throws URISyntaxException {
+        List<InetAddress> boundAddresses = new ArrayList<InetAddress>();
 
-		if (Main.log.isDebugEnabled()) {
-			Main.log.debug("[Main] Start creating enabled Backends!");
-		}
+        //URL url = Main.class.getResource("libTUNWrapperCdl.so");
+        File file = new File("libTUNWrapperCdl.so");
+        
+        System.out.println("File exists: " + file.exists());
 
-		for (final String enabledBackend : enabledBackends) {
+        List<InetAddress> addresses = new ArrayList<InetAddress>();
+        for(String s : config.getStringArray("connectionMapper.localBoundIP"))
+            try {
+                addresses.add(Inet6Address.getByName(s));
+            } catch (UnknownHostException e) {
+                e.printStackTrace();  //To change body of catch statement use File | Settings | File Templates.
+        }
 
-			Backend backend;
+        try {
+            ConnectionMapper.start(file.getAbsolutePath(),
+                                   log,
+                                   config.getString("connectionMapper.tunBoundIP"),
+                    config.getInt("connectionMapper.localUdpServerPort"),
+                    config.getInt("listenPort"),
+                    config.getString("connectionMapper.tunUdpIP"),
+                    config.getString("connectionMapper.tunTcpIP"),
+                    config.getString("connectionMapper.udpNetIf"),
+                    config.getString("connectionMapper.udpNetIfMac"),
+                    config.getString("connectionMapper.tcpNetIf"),
+                    config.getString("connectionMapper.tcpNetIfMac"),
+                    config.getString("connectionMapper.tunNetIf"),
+                    addresses);
+        } catch (Exception e) {
+            e.printStackTrace();  //To change body of catch statement use File | Settings | File Templates.
+        }
+    }
+    
+    //Create the backends enabled in ssp.properties 
+    private static void createBackends(Configuration config) throws Exception {
+        
+        String[] enabledBackends = config.getStringArray("enableBackend");
 
-			// GeneratorBackend
-			if (enabledBackend.equals("generator")) {
+        if(log.isDebugEnabled()){
+            log.debug("[Main] Start creating enabled Backends!");
+        }
+        
+        for(String enabledBackend: enabledBackends){
 
-				backend = new GeneratorBackend(config.getInt("generator.nodes", 100), config.getInt("generator.features", 10), config.getDouble(
-						"generator.pValue", 0.5), config.getDouble("generator.pFeature", 0.01));
-			}
+            Backend backend;
 
-			// SLSEBackend
-			else if (enabledBackend.equals("slse")) {
+            //GeneratorBackend
+            if(enabledBackend.equals("generator")) {
 
-				backend = new SLSEBackend(config.getBoolean("slse.waitForPolling", false), config.getBoolean("slse.parallelPolling", false));
+                backend = new GeneratorBackend(config.getInt("generator.nodes", 100),
+                                               config.getInt("generator.features", 10),
+                                               config.getDouble("generator.pValue", 0.5),
+                                               config.getDouble("generator.pFeature", 0.01));
+            }
 
-				for (final String proxy : config.getStringArray("slse.proxy")) {
-					((SLSEBackend) backend).addProxy(proxy);
-				}
+            //SLSEBackend
+            else if(enabledBackend.equals("slse")) {
+                
+                backend = new SLSEBackend(config.getBoolean("slse.waitForPolling", false),
+                                          config.getBoolean("slse.parallelPolling", false),
+										  config.getInt("slse.pollInterval", 10000)
+										  );
+                
+                for(String proxy: config.getStringArray("slse.proxy")) {
+                    ((SLSEBackend) backend).addProxy(proxy);
+                }
 
-				((SLSEBackend) backend).pollProxiesForever();
+                ((SLSEBackend) backend).pollProxiesForever();
 
-			}
+            }
 
-			// UberdustBackend
-			else if (enabledBackend.equals("uberdust")) {
+            //UberdustBackend
+            else if(enabledBackend.equals("uberdust")) {
 
-				backend = new UberdustBackend();
+                backend = new UberdustBackend();
 
-				for (final String testbed : config.getStringArray("uberdust.testbed")) {
-					final String[] tb = testbed.split(" ");
-					if (tb.length != 2) {
-						throw new Exception("Uberdust testbed has to be in the form 'http://server.tld:1234 5' " + "(where 5 is the testbed-id)");
-					}
-					((UberdustBackend) backend).addUberdustTestbed(tb[0], tb[1]);
-				}
-			}
+                for(String testbed: config.getStringArray("uberdust.testbed")) {
+                    String[] tb = testbed.split(" ");
+                    if(tb.length != 2) {
+                        throw new Exception("Uberdust testbed has to be in the form 'http://server.tld:1234 5' " +
+                                "(where 5 is the testbed-id)");
+                    }
+                    ((UberdustBackend) backend).addUberdustTestbed(tb[0], tb[1]);
+                }
+            }
 
-			// WiselibTestBackend
-			else if (enabledBackend.equals("wiselibtest")) {
+            //WiselibTestBackend
+            else if(enabledBackend.equals("wiselibtest")) {
 
-				backend = new WiselibTestBackend();
-			}
+               backend = new WiselibTestBackend();
+            }
 
-			// CoAPBackend
-			else if (enabledBackend.equals("coap")) {
+            //CoAPBackend
+            else if(enabledBackend.startsWith("coap")) {
+                String ipv6Prefix = config.getString(enabledBackend + ".ipv6Prefix");
+                if(ipv6Prefix == null){
+                    throw new Exception("Property '" + enabledBackend + ".ipv6Prefix' not set.");
+                }
+                backend = new CoapBackend(30, ipv6Prefix);
+                CoapNodeRegistrationServer.getInstance().addCoapBackend((CoapBackend) backend);
+            }
 
-				final String ipv6Prefix = config.getString("coap.ipv6Prefix");
-				if (ipv6Prefix == null) {
-					throw new Exception("Propertiy 'coap.ipv6Prefix' not set.");
-				}
-				backend = new CoapBackend(ipv6Prefix);
-			}
+            //SimpleBackend
+            else if(enabledBackend.equals("simple")){
 
-			// SimpleBackend
-			else if (enabledBackend.equals("simple")) {
-
-				backend = new SimpleBackend();
-			}
+                backend = new SimpleBackend();
+            }
 
 			// ParkingBackend
 			else if (enabledBackend.equals("parking-hl")) {
@@ -171,27 +227,32 @@ public class Main {
 				backend = new ParkingSantanderBackend(config);
 			}
 
-			// FilesBackend
-			else if (enabledBackend.equals("files")) {
-				final String directory = config.getString("files.directory");
-				if (directory == null) {
-					throw new Exception("Propertiy 'files.directory' not set.");
-				}
-				backend = new FilesBackend(directory);
-			}
+            //FilesBackend
+            else if(enabledBackend.equals("files")){
+                String directory = config.getString("files.directory");
+                if(directory == null){
+                    throw new Exception("Property 'files.directory' not set.");
+                }
+                backend = new FilesBackend(directory);
+            }
 
-			// Unknown Backend Type
-			else {
-				throw new Exception("Config file error: Backend '" + enabledBackend + "' not found.");
-			}
+            //Unknown Backend Type
+            else {
+                throw new Exception("Config file error: Backend '" + enabledBackend + "' not found.");
+            }
 
-			backend.bind(EntityManager.getInstance());
+            backend.bind(EntityManager.getInstance());
 
-			if (Main.log.isDebugEnabled()) {
-				Main.log.debug("[Main] Enabled new " + backend.getClass().getSimpleName() + " with path prefix " + backend.getPathPrefix());
-			}
-		}
+            if(log.isDebugEnabled()){
+                log.debug("[Main] Enabled new " + backend.getClass().getSimpleName() + " with path prefix " +
+                    backend.getPathPrefix());
+            }
+        }
 
-	}
 
+
+    }
+
+    
+	
 }
