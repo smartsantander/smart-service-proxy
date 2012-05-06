@@ -104,10 +104,19 @@ public class Main {
         //Set URI base
         String defaultHost = InetAddress.getLocalHost().getCanonicalHostName();
         String baseURIHost = config.getString("baseURIHost", defaultHost);
-        if(listenPort != 80){
-            baseURIHost = baseURIHost + ":" + listenPort;
+        String proxyPass = config.getString("proxyPass", "");
+       
+		if(proxyPass.equals("")){
+			if (listenPort != 80){
+				baseURIHost = baseURIHost + ":" + listenPort;
+			}
+        }else{
+        	baseURIHost += proxyPass; 
         }
         EntityManager.getInstance().setURIBase("http://" + baseURIHost);
+        EntityManager.getInstance().setProxyPass(proxyPass);
+       
+        log.debug("---------------------------baseURIHost: "+baseURIHost);
 
         //Create enabled backends
         createBackends(config);

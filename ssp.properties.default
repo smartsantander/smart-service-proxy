@@ -6,6 +6,7 @@
 #baseURIHost = www.coap2.wisebed.itm.uni-luebeck.de
 #listenPort = 8080
 #ram = 2097152
+proxyPass = /ssp
 
 
 #--------------

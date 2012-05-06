@@ -24,7 +24,16 @@
  */
 package eu.spitfire_project.smart_service_proxy.core;
 
-import eu.spitfire_project.smart_service_proxy.backends.coap.CoapBackend;
+import static org.jboss.netty.handler.codec.http.HttpHeaders.Names.HOST;
+
+import java.io.File;
+import java.net.URI;
+import java.util.Map;
+import java.util.NoSuchElementException;
+import java.util.Set;
+import java.util.Vector;
+import java.util.concurrent.ConcurrentHashMap;
+
 import org.apache.log4j.Logger;
 import org.jboss.netty.channel.ChannelHandlerContext;
 import org.jboss.netty.channel.Channels;
@@ -32,17 +41,7 @@ import org.jboss.netty.channel.MessageEvent;
 import org.jboss.netty.channel.SimpleChannelHandler;
 import org.jboss.netty.handler.codec.http.HttpRequest;
 
-import java.io.File;
-import java.net.InetAddress;
-import java.net.URI;
-import java.net.UnknownHostException;
-import java.util.Map;
-import java.util.NoSuchElementException;
-import java.util.Set;
-import java.util.Vector;
-import java.util.concurrent.ConcurrentHashMap;
-
-import static org.jboss.netty.handler.codec.http.HttpHeaders.Names.*;
+import eu.spitfire_project.smart_service_proxy.backends.coap.CoapBackend;
 
 //import eu.spitfire_project.smart_service_proxy.backends.coap.CoapBackend;
 
@@ -70,6 +69,12 @@ public class EntityManager extends SimpleChannelHandler {
 	private final String staticPrefix = "/static/";
 	private final String staticDirectory = "data/static/";
 	private final int backendPrefixLength = String.format(backendPrefixFormat, 0).length();
+	
+	/**
+	 * Has to be set if the SSP is run by an Apache web server 
+	 * @see http://httpd.apache.org/docs/2.0/mod/mod_proxy.html
+	 */
+	private String proxyPass = "";
 	
 	private int nextEntityId = 0;
 	private Vector<UIElement> uiElements = new Vector<UIElement>();
@@ -195,6 +200,17 @@ public class EntityManager extends SimpleChannelHandler {
             }
         }
             
+        log.debug("Path: "+path);
+        
+        // Proxypass is used by apache to Forward requests to a different URL
+        // This part of the path is not used in SSP and therefore cropped
+        path = path.replace(proxyPass, "");
+        log.debug("Path2: "+path);
+        
+        Set<String> keySet = pathBackends.keySet();
+        for (String string : keySet) {
+			System.out.println("Key: "+string);
+		}
         
         if(path.equals(listPath)) {
             // Handle request for resource at path ".well-known/core"
@@ -226,6 +242,8 @@ public class EntityManager extends SimpleChannelHandler {
             }
 
             log.debug("Try to find backend for prefix " + prefix);
+            
+            log.debug("Key is: "+prefix);
             
             //Find backend for prefix
             if(pathBackends.containsKey(prefix)){
@@ -354,6 +372,23 @@ public class EntityManager extends SimpleChannelHandler {
 		}
 		return b;
 	}
+	
+	// ------------------------------------------------------------------------
+	/**
+	 * @return the proxyPass
+	 */
+	public String getProxyPass() {
+		return proxyPass;
+	}
+
+	// ------------------------------------------------------------------------
+	/**
+	 * @param proxyPass the proxyPass to set
+	 */
+	public void setProxyPass(String proxyPass) {
+		this.proxyPass = proxyPass;
+	}
+
 }
 
 
