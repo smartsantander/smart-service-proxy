@@ -27,7 +27,7 @@ import eu.spitfire_project.smart_service_proxy.core.EntityManager;
  */
 public abstract class ParkingBackend extends Backend {
 
-	private static final Logger log = Logger.getLogger(ParkingHLBackend.class.getName());
+	private static final Logger log = Logger.getLogger(ParkingBackend.class.getName());
 	
 	private static Model occupationLevelModel = null;
 	
