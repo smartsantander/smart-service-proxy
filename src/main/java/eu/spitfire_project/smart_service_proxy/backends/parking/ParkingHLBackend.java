@@ -67,7 +67,7 @@ public class ParkingHLBackend extends ParkingBackend {
 
 	/**
 	 * Returns a new Backend instance and reads the actual configuration from ssp.properties
-	 *  
+	 * 
 	 * @param config
 	 *            The main configuration file.
 	 * 
@@ -77,7 +77,7 @@ public class ParkingHLBackend extends ParkingBackend {
 	public ParkingHLBackend(final Configuration config) throws ConfigurationException {
 		super("Lübeck");
 		this.paringkURL = config.getString("parkingURI");
-		cachingInterval = config.getInt("parkingLuebeckCachingMinutes",5) * 1000 * 60;
+		cachingInterval = config.getInt("parkingLuebeckCachingMinutes", 5) * 1000 * 60;
 	}
 
 	@Override
@@ -100,9 +100,10 @@ public class ParkingHLBackend extends ParkingBackend {
 				throw new IOException("No parkings could not be parsed from: " + json);
 			}
 
-			// create virtual/dummy parking lots as we have only the total amount and free amount in Lubeck
-			for (ParkingArea parkingArea : parkings.getParkings()) {
-				Collection<ParkingSpace> psl = new ArrayList<ParkingSpace>(parkingArea.getSpaces());
+			// create virtual/dummy parking lots as we have only the total amount and free amount in
+			// Lubeck
+			for (final ParkingArea parkingArea : parkings.getParkings()) {
+				final Collection<ParkingSpace> psl = new ArrayList<ParkingSpace>(parkingArea.getSpaces());
 
 				// the free lots
 				for (int lot = 0; lot < parkingArea.getFree(); lot++) {
@@ -119,11 +120,10 @@ public class ParkingHLBackend extends ParkingBackend {
 			// create resources
 			final Collection<Model> models = createModels(parkings.getParkings());
 			registerModels(models);
-			
-			URI uri = new URI(entityManager.getURIBase() + pathPrefix + "Luebeck");
+
+			final URI uri = new URI(entityManager.getURIBase() + pathPrefix + "Luebeck");
 			addToResources(uri, createCityModel(parkings.getParkings(), "Luebeck"));
-			log.debug("registered city: " + uri);
-			
+			ParkingHLBackend.log.debug("registered city: " + uri);
 
 		} catch (final URISyntaxException e) {
 			ParkingHLBackend.log.fatal("This should never happen.", e);
@@ -141,10 +141,10 @@ public class ParkingHLBackend extends ParkingBackend {
 			ctx.sendUpstream(me);
 			return;
 		}
-		
-		// update all resources since they are outdated due to the cache's configuration		
-		Collection<Model> models = resources.values();
-		for (Model model : models) {
+
+		// update all resources since they are outdated due to the cache's configuration
+		final Collection<Model> models = resources.values();
+		for (final Model model : models) {
 			model.close();
 		}
 		resources.clear();
@@ -152,14 +152,14 @@ public class ParkingHLBackend extends ParkingBackend {
 
 		super.messageReceived(ctx, me);
 	}
-	
+
 	@Override
 	protected Map<URI, Model> getResourcesMapping() {
 		return resources;
 	}
 
 	@Override
-	protected Model addToResources(URI uri, Model model) {
+	protected Model addToResources(final URI uri, final Model model) {
 		return resources.put(uri, model);
 	}
 }

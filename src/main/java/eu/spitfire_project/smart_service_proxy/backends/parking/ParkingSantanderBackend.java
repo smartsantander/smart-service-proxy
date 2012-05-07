@@ -87,10 +87,10 @@ public class ParkingSantanderBackend extends ParkingBackend {
 			ctx.sendUpstream(me);
 			return;
 		}
-		
+
 		// update all resources since they are outdated due to the cache's configuration
-		Collection<Model> models = resources.values();
-		for (Model model : models) {
+		final Collection<Model> models = resources.values();
+		for (final Model model : models) {
 			model.close();
 		}
 		resources.clear();
@@ -98,7 +98,7 @@ public class ParkingSantanderBackend extends ParkingBackend {
 
 		super.messageReceived(ctx, me);
 	}
-	
+
 	@Override
 	protected Map<URI, Model> getResourcesMapping() {
 		return resources;
@@ -122,18 +122,18 @@ public class ParkingSantanderBackend extends ParkingBackend {
 				final Collection<Model> models = createModels(parkingAreas);
 				registerModels(models);
 
-				URI cityUri = new URI(entityManager.getURIBase() + pathPrefix + getCityName());
+				final URI cityUri = new URI(entityManager.getURIBase() + pathPrefix + getCityName());
 				addToResources(cityUri, createCityModel(parkingAreas, getCityName()));
-				log.debug("registered city: " + cityUri);
-				
-				URI parkingSpacesUri = new URI(entityManager.getURIBase() + pathPrefix + getCityName()+"ParkingSpaces");
-				addToResources(parkingSpacesUri, createCityModelForParkingSpaces(parkingAreas));			
-				log.debug("registered parking spaces: " + parkingSpacesUri);
-				
+				ParkingSantanderBackend.log.debug("registered city: " + cityUri);
+
+				final URI parkingSpacesUri = new URI(entityManager.getURIBase() + pathPrefix + getCityName() + "ParkingSpaces");
+				addToResources(parkingSpacesUri, createCityModelForParkingSpaces(parkingAreas));
+				ParkingSantanderBackend.log.debug("registered parking spaces: " + parkingSpacesUri);
+
 			} catch (final URISyntaxException e) {
 				ParkingSantanderBackend.log.fatal("This should never happen.", e);
-			} catch (UnsupportedEncodingException e) {
-				log.error(e,e);
+			} catch (final UnsupportedEncodingException e) {
+				ParkingSantanderBackend.log.error(e, e);
 			}
 		}
 
@@ -203,18 +203,18 @@ public class ParkingSantanderBackend extends ParkingBackend {
 			// create a new collection of parking spaces and add them to the recently created
 			// parking area
 			area.setParkingSpaces(toParkingSpaces(parkingLotSpaces));
-			
+
 			// get and set the number of available parking lots
 			int availableLots = 0;
-			for (ParkingSpace parkingSpace : area.getParkingSpaces()) {
-				if (parkingSpace.getStatus().equals(ParkingSpace.ParkingLotStatus.FREE)){
+			for (final ParkingSpace parkingSpace : area.getParkingSpaces()) {
+				if (parkingSpace.getStatus().equals(ParkingSpace.ParkingLotStatus.FREE)) {
 					++availableLots;
 				}
 			}
 			area.setFree(availableLots);
-			
+
 			area.setStatus("open");
-		}else{
+		} else {
 			area.setStatus("closed");
 		}
 
@@ -257,7 +257,7 @@ public class ParkingSantanderBackend extends ParkingBackend {
 	}
 
 	@Override
-	protected Model addToResources(URI uri, Model model) {
+	protected Model addToResources(final URI uri, final Model model) {
 		return resources.put(uri, model);
 	}
 }
