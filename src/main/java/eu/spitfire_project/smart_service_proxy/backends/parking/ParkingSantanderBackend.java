@@ -32,20 +32,14 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
-import java.util.Set;
+import java.util.Map;
 
 import org.apache.commons.configuration.Configuration;
 import org.apache.commons.configuration.ConfigurationException;
 import org.apache.log4j.Logger;
-import org.jboss.netty.channel.ChannelFuture;
-import org.jboss.netty.channel.ChannelFutureListener;
 import org.jboss.netty.channel.ChannelHandlerContext;
-import org.jboss.netty.channel.Channels;
 import org.jboss.netty.channel.MessageEvent;
-import org.jboss.netty.handler.codec.http.DefaultHttpResponse;
-import org.jboss.netty.handler.codec.http.HttpMethod;
 import org.jboss.netty.handler.codec.http.HttpRequest;
-import org.jboss.netty.handler.codec.http.HttpResponseStatus;
 
 import com.hp.hpl.jena.rdf.model.Model;
 
@@ -53,8 +47,6 @@ import eu.spitfire_project.smart_service_proxy.backends.parking.ParkingSpace.Par
 import eu.spitfire_project.smart_service_proxy.backends.parking.generated.ParkingLot;
 import eu.spitfire_project.smart_service_proxy.backends.parking.generated.ParkingService;
 import eu.spitfire_project.smart_service_proxy.core.EntityManager;
-import eu.spitfire_project.smart_service_proxy.core.SelfDescription;
-import eu.spitfire_project.smart_service_proxy.utils.HttpResponseFactory;
 
 /**
  * A {@link ParkingSantanderBackend} instance hosts models for parking areas located in the city of
@@ -69,7 +61,7 @@ public class ParkingSantanderBackend extends ParkingBackend {
 	/** Instance to log messages */
 	private static Logger log = Logger.getLogger(ParkingSantanderBackend.class.getName());
 
-	protected final HashMap<URI, Model> resources = new HashMap<URI, Model>();
+	private final HashMap<URI, Model> resources = new HashMap<URI, Model>();
 
 	/**
 	 * Returns a new backend instance and reads the actual configuration from ssp.properties
@@ -80,9 +72,8 @@ public class ParkingSantanderBackend extends ParkingBackend {
 	 *             if an error occurs while loading ssp.properties
 	 */
 	public ParkingSantanderBackend(final Configuration config) throws ConfigurationException {
-		super("Santander");;
-		//TODO FMA: pull up in super class (messageReceived then should be pulled up too)
-		cachingInterval = config.containsKey("parkingSantanderCachingMinutes") ?  config.getInt("parkingSantanderCachingMinutes") * 1000 * 60 : 5 * 60 * 1000;
+		super("Santander");
+		cachingInterval = config.getInt("parkingSantanderCachingMinutes", 5) * 1000 * 60;
 	}
 
 	@Override
@@ -98,43 +89,12 @@ public class ParkingSantanderBackend extends ParkingBackend {
 			return;
 		}
 
-		final HttpRequest request = (HttpRequest) me.getMessage();
-		Object response;
-
-		// Look up resource
-		final URI resourceURI = entityManager.normalizeURI(new URI(request.getUri()));
-		final Model model = resources.get(resourceURI);
-
-		if (model != null) {
-			if (request.getMethod() == HttpMethod.GET) {
-				response = new SelfDescription(model, new URI(request.getUri()), new Date(cacheExpiration));
-
-				if (ParkingSantanderBackend.log.isDebugEnabled()) {
-					ParkingSantanderBackend.log.debug("[ParkingBackend] Resource found: " + resourceURI);
-				}
-			} else {
-				response = new DefaultHttpResponse(request.getProtocolVersion(), HttpResponseStatus.METHOD_NOT_ALLOWED);
-
-				if (ParkingSantanderBackend.log.isDebugEnabled()) {
-					ParkingSantanderBackend.log.debug("[ParkingBackend] Method not allowed: " + request.getMethod());
-				}
-			}
-		} else {
-			response = HttpResponseFactory.createHttpResponse(request.getProtocolVersion(), HttpResponseStatus.NOT_FOUND);
-
-			if (ParkingSantanderBackend.log.isDebugEnabled()) {
-				ParkingSantanderBackend.log.debug("[ParkingBackend] Resource not found: " + resourceURI);
-			}
-		}
-
-		// Send response
-		final ChannelFuture future = Channels.write(ctx.getChannel(), response);
-		future.addListener(ChannelFutureListener.CLOSE);
+		super.messageReceived(ctx, me);
 	}
-
+	
 	@Override
-	public Set<URI> getResources() {
-		return resources.keySet();
+	protected Map<URI, Model> getResourcesMapping() {
+		return resources;
 	}
 
 	// ------------------------------------------------------------------------
@@ -149,8 +109,6 @@ public class ParkingSantanderBackend extends ParkingBackend {
 		final Collection<ParkingArea> parkingAreas = getParkingAreas();
 
 		if (parkingAreas != null) {
-
-			cacheExpiration = new Date().getTime() + cachingInterval;
 
 			try {
 				// create a Jena model based on the created parking areas

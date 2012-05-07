@@ -33,31 +33,22 @@ import java.net.URL;
 import java.net.URLConnection;
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.Date;
 import java.util.HashMap;
+import java.util.Map;
 import java.util.Scanner;
-import java.util.Set;
 
 import org.apache.commons.configuration.Configuration;
 import org.apache.commons.configuration.ConfigurationException;
 import org.apache.log4j.Logger;
-import org.jboss.netty.channel.ChannelFuture;
-import org.jboss.netty.channel.ChannelFutureListener;
 import org.jboss.netty.channel.ChannelHandlerContext;
-import org.jboss.netty.channel.Channels;
 import org.jboss.netty.channel.MessageEvent;
-import org.jboss.netty.handler.codec.http.DefaultHttpResponse;
-import org.jboss.netty.handler.codec.http.HttpMethod;
 import org.jboss.netty.handler.codec.http.HttpRequest;
-import org.jboss.netty.handler.codec.http.HttpResponseStatus;
 
 import com.google.gson.Gson;
 import com.hp.hpl.jena.rdf.model.Model;
 
 import eu.spitfire_project.smart_service_proxy.backends.parking.ParkingSpace.ParkingLotStatus;
 import eu.spitfire_project.smart_service_proxy.core.EntityManager;
-import eu.spitfire_project.smart_service_proxy.core.SelfDescription;
-import eu.spitfire_project.smart_service_proxy.utils.HttpResponseFactory;
 
 /**
  * A {@link ParkingHLBackend} instance hosts models for parking areas.
@@ -70,15 +61,15 @@ public class ParkingHLBackend extends ParkingBackend {
 
 	private static Logger log = Logger.getLogger(ParkingHLBackend.class.getName());
 
-	protected final HashMap<URI, Model> resources = new HashMap<URI, Model>();
+	private final HashMap<URI, Model> resources = new HashMap<URI, Model>();
 
 	private final String paringkURL;
 
 	/**
 	 * Returns a new Backend instance and reads the actual configuration from ssp.properties
-	 * 
-	 * @param parkingUrl
-	 *            URL of the proprietary parking information
+	 *  
+	 * @param config
+	 *            The main configuration file.
 	 * 
 	 * @throws org.apache.commons.configuration.ConfigurationException
 	 *             if an error occurs while loading ssp.properties
@@ -86,7 +77,7 @@ public class ParkingHLBackend extends ParkingBackend {
 	public ParkingHLBackend(final Configuration config) throws ConfigurationException {
 		super("Lübeck");
 		this.paringkURL = config.getString("parkingURI");
-		cachingInterval = config.containsKey("parkingSantanderCachingMinutes") ?  config.getInt("parkingSantanderCachingMinutes") * 1000 * 60 : 5 * 60 * 1000;
+		cachingInterval = config.getInt("parkingLuebeckCachingMinutes",5) * 1000 * 60;
 	}
 
 	@Override
@@ -151,43 +142,12 @@ public class ParkingHLBackend extends ParkingBackend {
 			return;
 		}
 
-		final HttpRequest request = (HttpRequest) me.getMessage();
-		Object response;
-
-		// Look up resource
-		final URI resourceURI = entityManager.normalizeURI(new URI(request.getUri()));
-		final Model model = resources.get(resourceURI);		
-
-		if (model != null) {
-			if (request.getMethod() == HttpMethod.GET) {
-				response = new SelfDescription(model, new URI(request.getUri()), new Date(cacheExpiration));
-
-				if (ParkingHLBackend.log.isDebugEnabled()) {
-					ParkingHLBackend.log.debug("[ParkingBackend] Resource found: " + resourceURI);
-				}
-			} else {
-				response = new DefaultHttpResponse(request.getProtocolVersion(), HttpResponseStatus.METHOD_NOT_ALLOWED);
-
-				if (ParkingHLBackend.log.isDebugEnabled()) {
-					ParkingHLBackend.log.debug("[ParkingBackend] Method not allowed: " + request.getMethod());
-				}
-			}
-		} else {
-			response = HttpResponseFactory.createHttpResponse(request.getProtocolVersion(), HttpResponseStatus.NOT_FOUND);
-
-			if (ParkingHLBackend.log.isDebugEnabled()) {
-				ParkingHLBackend.log.debug("[ParkingBackend] Resource not found: " + resourceURI);
-			}
-		}
-
-		// Send response
-		final ChannelFuture future = Channels.write(ctx.getChannel(), response);
-		future.addListener(ChannelFutureListener.CLOSE);
+		super.messageReceived(ctx, me);
 	}
-
+	
 	@Override
-	public Set<URI> getResources() {
-		return resources.keySet();
+	protected Map<URI, Model> getResourcesMapping() {
+		return resources;
 	}
 
 	@Override

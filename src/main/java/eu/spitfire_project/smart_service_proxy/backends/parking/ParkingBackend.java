@@ -5,13 +5,22 @@ import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URLEncoder;
 import java.util.Collection;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.Map;
+import java.util.Set;
 
 import org.apache.log4j.Logger;
+import org.jboss.netty.channel.ChannelFuture;
+import org.jboss.netty.channel.ChannelFutureListener;
 import org.jboss.netty.channel.ChannelHandlerContext;
+import org.jboss.netty.channel.Channels;
 import org.jboss.netty.channel.MessageEvent;
+import org.jboss.netty.handler.codec.http.DefaultHttpResponse;
+import org.jboss.netty.handler.codec.http.HttpMethod;
+import org.jboss.netty.handler.codec.http.HttpRequest;
+import org.jboss.netty.handler.codec.http.HttpResponseStatus;
 
 import com.hp.hpl.jena.rdf.model.Model;
 import com.hp.hpl.jena.rdf.model.ModelFactory;
@@ -20,6 +29,8 @@ import com.hp.hpl.jena.rdf.model.Resource;
 import eu.spitfire_project.smart_service_proxy.backends.parking.ParkingSpace.ParkingLotStatus;
 import eu.spitfire_project.smart_service_proxy.core.Backend;
 import eu.spitfire_project.smart_service_proxy.core.EntityManager;
+import eu.spitfire_project.smart_service_proxy.core.SelfDescription;
+import eu.spitfire_project.smart_service_proxy.utils.HttpResponseFactory;
 
 /**
  * Base class for all backends which store and provide information about parking areas and parking spaces.
@@ -35,11 +46,8 @@ public abstract class ParkingBackend extends Backend {
 	
 	private static final Map<String,Resource> occupationLevels = new HashMap<String, Resource>();
 
-	/** Inicates the time, new values are considered as valid */
+	/** Indicates the time, new values are considered as valid */
 	protected int cachingInterval = 0;
-
-	/** Indicates the currently cached values's expiration date */
-	protected long cacheExpiration;
 
 	private final String cityName;
 	
@@ -72,19 +80,58 @@ public abstract class ParkingBackend extends Backend {
 	public String getCityName() {
 		return cityName;
 	}
+	
+	@Override
+	public void messageReceived(final ChannelHandlerContext ctx, final MessageEvent me) throws Exception {
+
+		final HttpRequest request = (HttpRequest) me.getMessage();
+		Object response;
+		
+		// Look up resource
+		final URI resourceURI = entityManager.normalizeURI(new URI(request.getUri()));
+		final Model model = getResourcesMapping().get(resourceURI);
+
+		if (model != null) {
+			
+			if (request.getMethod() == HttpMethod.GET) {
+				
+				// configure the time the returned data is held in chache
+				long cacheExpiration = new Date().getTime() + cachingInterval;
+				response = new SelfDescription(model, new URI(request.getUri()), new Date(cacheExpiration));
+
+				if (ParkingBackend.log.isDebugEnabled()) {
+					ParkingBackend.log.debug("[ParkingBackend] Resource found: " + resourceURI);
+				}
+			} else {
+				response = new DefaultHttpResponse(request.getProtocolVersion(), HttpResponseStatus.METHOD_NOT_ALLOWED);
+
+				if (ParkingBackend.log.isDebugEnabled()) {
+					ParkingBackend.log.debug("[ParkingBackend] Method not allowed: " + request.getMethod());
+				}
+			}
+		} else {
+			response = HttpResponseFactory.createHttpResponse(request.getProtocolVersion(), HttpResponseStatus.NOT_FOUND);
+
+			if (ParkingBackend.log.isDebugEnabled()) {
+				ParkingBackend.log.debug("[ParkingBackend] Resource not found: " + resourceURI);
+			}
+		}
+
+		// Send response
+		final ChannelFuture future = Channels.write(ctx.getChannel(), response);
+		future.addListener(ChannelFutureListener.CLOSE);
+	}
+
 
 
 	/**
 	 * Creates jena models for provided parking areas and parking spaces
 	 * 
-	 * @param locationPrefix
-	 *            Indicates the parking areas' location (e.g., a city name)
 	 * @param parkingAreas
 	 *            A collection of parking areas
 	 * @return Jena models for the provided parking areas and parking lots
-	 * @throws URISyntaxException
 	 */
-	protected Collection<Model> createModels(final Collection<ParkingArea> parkingAreas) throws URISyntaxException {
+	protected Collection<Model> createModels(final Collection<ParkingArea> parkingAreas) {
 		Collection<Model> models = new LinkedList<Model>();
 
 		try {
@@ -234,6 +281,14 @@ public abstract class ParkingBackend extends Backend {
 	}
 
 	protected abstract Model addToResources(URI uri, Model model);
+	
+	protected abstract Map<URI, Model> getResourcesMapping();
+	
+	@Override
+	public Set<URI> getResources() {
+		return getResourcesMapping().keySet();
+	}
+	
 
 	protected void registerModels(Collection<Model> models) throws URISyntaxException {
 		for (Model model : models) {
