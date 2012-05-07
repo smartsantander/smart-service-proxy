@@ -280,7 +280,7 @@ public class Main {
 
 			// ParkingBackend
 			else if (enabledBackend.equals("parking-hl")) {
-				backend = new ParkingHLBackend(config.getString("parkingURI"));
+				backend = new ParkingHLBackend(config);
 			}
 
 			// SantanderParkingBackend

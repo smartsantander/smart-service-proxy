@@ -38,6 +38,7 @@ import java.util.HashMap;
 import java.util.Scanner;
 import java.util.Set;
 
+import org.apache.commons.configuration.Configuration;
 import org.apache.commons.configuration.ConfigurationException;
 import org.apache.log4j.Logger;
 import org.jboss.netty.channel.ChannelFuture;
@@ -71,7 +72,6 @@ public class ParkingHLBackend extends ParkingBackend {
 
 	protected final HashMap<URI, Model> resources = new HashMap<URI, Model>();
 
-	
 	private final String paringkURL;
 
 	/**
@@ -83,9 +83,10 @@ public class ParkingHLBackend extends ParkingBackend {
 	 * @throws org.apache.commons.configuration.ConfigurationException
 	 *             if an error occurs while loading ssp.properties
 	 */
-	public ParkingHLBackend(final String parkingUrl) throws ConfigurationException {
-		super();
-		this.paringkURL = parkingUrl;
+	public ParkingHLBackend(final Configuration config) throws ConfigurationException {
+		super("Lübeck");
+		this.paringkURL = config.getString("parkingURI");
+		cachingInterval = config.containsKey("parkingSantanderCachingMinutes") ?  config.getInt("parkingSantanderCachingMinutes") * 1000 * 60 : 5 * 60 * 1000;
 	}
 
 	@Override
@@ -121,7 +122,7 @@ public class ParkingHLBackend extends ParkingBackend {
 					psl.add(new ParkingSpace(String.valueOf(lot), parkingArea.getKind(), ParkingLotStatus.OCCUPIED, parkingArea.getGeo()));
 				}
 				parkingArea.setParkingSpaces(psl);
-				parkingArea.setCity("Lübeck");
+				parkingArea.setCity(super.getCityName());
 			}
 
 			// create resources
@@ -155,12 +156,11 @@ public class ParkingHLBackend extends ParkingBackend {
 
 		// Look up resource
 		final URI resourceURI = entityManager.normalizeURI(new URI(request.getUri()));
-		final Model model = resources.get(resourceURI);
+		final Model model = resources.get(resourceURI);		
 
 		if (model != null) {
 			if (request.getMethod() == HttpMethod.GET) {
-				// TODO FMA: set caching option appropriately
-				response = new SelfDescription(model, new URI(request.getUri()), new Date());
+				response = new SelfDescription(model, new URI(request.getUri()), new Date(cacheExpiration));
 
 				if (ParkingHLBackend.log.isDebugEnabled()) {
 					ParkingHLBackend.log.debug("[ParkingBackend] Resource found: " + resourceURI);

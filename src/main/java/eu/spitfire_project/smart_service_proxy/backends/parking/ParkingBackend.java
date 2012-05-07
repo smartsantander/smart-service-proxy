@@ -10,6 +10,8 @@ import java.util.LinkedList;
 import java.util.Map;
 
 import org.apache.log4j.Logger;
+import org.jboss.netty.channel.ChannelHandlerContext;
+import org.jboss.netty.channel.MessageEvent;
 
 import com.hp.hpl.jena.rdf.model.Model;
 import com.hp.hpl.jena.rdf.model.ModelFactory;
@@ -32,6 +34,19 @@ public abstract class ParkingBackend extends Backend {
 	private static Model occupationLevelModel = null;
 	
 	private static final Map<String,Resource> occupationLevels = new HashMap<String, Resource>();
+
+	/** Inicates the time, new values are considered as valid */
+	protected int cachingInterval = 0;
+
+	/** Indicates the currently cached values's expiration date */
+	protected long cacheExpiration;
+
+	private final String cityName;
+	
+	public ParkingBackend(String cityName) {
+		super();
+		this.cityName = cityName;
+	}
 	
 	
 	@Override
@@ -49,6 +64,15 @@ public abstract class ParkingBackend extends Backend {
 			}
 		}
 	}
+
+	// ------------------------------------------------------------------------
+	/**
+	 * @return the cityName
+	 */
+	public String getCityName() {
+		return cityName;
+	}
+
 
 	/**
 	 * Creates jena models for provided parking areas and parking spaces

@@ -71,14 +71,6 @@ public class ParkingSantanderBackend extends ParkingBackend {
 
 	protected final HashMap<URI, Model> resources = new HashMap<URI, Model>();
 
-	/** Inicates the time, new values are considered as valid */
-	private int cachingInterval = 0;
-
-	/** Indicates the currently cached values's expiration date */
-	private long cacheExpiration;
-	
-	private static final String cityName = "Santander";
-
 	/**
 	 * Returns a new backend instance and reads the actual configuration from ssp.properties
 	 * 
@@ -88,7 +80,7 @@ public class ParkingSantanderBackend extends ParkingBackend {
 	 *             if an error occurs while loading ssp.properties
 	 */
 	public ParkingSantanderBackend(final Configuration config) throws ConfigurationException {
-		super();
+		super("Santander");;
 		//TODO FMA: pull up in super class (messageReceived then should be pulled up too)
 		cachingInterval = config.containsKey("parkingSantanderCachingMinutes") ?  config.getInt("parkingSantanderCachingMinutes") * 1000 * 60 : 5 * 60 * 1000;
 	}
@@ -165,8 +157,8 @@ public class ParkingSantanderBackend extends ParkingBackend {
 				final Collection<Model> models = createModels(parkingAreas);
 				registerModels(models);
 
-				URI uri = new URI(entityManager.getURIBase() + pathPrefix + cityName);
-				addToResources(uri, createCityModel(parkingAreas, cityName));
+				URI uri = new URI(entityManager.getURIBase() + pathPrefix + getCityName());
+				addToResources(uri, createCityModel(parkingAreas, getCityName()));
 				log.debug("registered city: " + uri);				
 				
 			} catch (final URISyntaxException e) {
@@ -224,7 +216,7 @@ public class ParkingSantanderBackend extends ParkingBackend {
 
 		area.setName(pl.getParkingLotAddress());
 		area.setKind("PP");
-		area.setCity(cityName);
+		area.setCity(getCityName());
 
 		// ... get a list of all single parking spaces
 		final List<eu.spitfire_project.smart_service_proxy.backends.parking.generated.ParkingSpace> parkingLotSpaces = pl.getParkingSpaces();
