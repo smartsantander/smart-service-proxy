@@ -28,7 +28,6 @@ import java.io.UnsupportedEncodingException;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.Collection;
-import java.util.Date;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
@@ -130,7 +129,6 @@ public class ParkingSantanderBackend extends ParkingBackend {
 			} catch (final URISyntaxException e) {
 				ParkingSantanderBackend.log.fatal("This should never happen.", e);
 			} catch (UnsupportedEncodingException e) {
-				// TODO Auto-generated catch block
 				log.error(e,e);
 			}
 		}

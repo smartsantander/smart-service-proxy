@@ -213,9 +213,7 @@ public abstract class ParkingBackend extends Backend {
 	 */
 	protected Model createCityModel(Collection<ParkingArea> parkingAreas, String cityName) throws UnsupportedEncodingException{
 		Model cityModel = ModelFactory.createDefaultModel();
-		
-		//Resource city = cityModel.createResource(entityManager.getURIBase() + pathPrefix + cityName);
-		
+				
 		for (ParkingArea parkingArea : parkingAreas) {
 			
 			String name = URLEncoder.encode(parkingArea.getName(), "utf8");
@@ -264,6 +262,17 @@ public abstract class ParkingBackend extends Backend {
 	private Resource createParkingSpaceResource(final Model model, String name, ParkingSpace parkingSpace) {
 		Resource parkingLotType = "PP".equals(parkingSpace.getType()) ? ParkingVocab.PARKING_UNCOVERED_LOT : ParkingVocab.PARKING_COVERED_LOT;
 		final Resource psr = model.createResource(entityManager.getURIBase() + pathPrefix + name + "/" + parkingSpace.getId(), parkingLotType);
+		fillinParkingSpaceResource(parkingSpace, psr);
+		return psr;
+	}
+
+
+	// ------------------------------------------------------------------------
+	/**
+	 * @param parkingSpace
+	 * @param psr
+	 */
+	private void fillinParkingSpaceResource(ParkingSpace parkingSpace, final Resource psr) {
 		psr.addProperty(ParkingVocab.PARKINGID, parkingSpace.getId());
 		if (ParkingLotStatus.FREE.equals(parkingSpace.getStatus())) {
 			psr.addProperty(ParkingVocab.PARKINGSTATUS, ParkingVocab.PARKING_AVAILABLE_LOT);
@@ -277,7 +286,6 @@ public abstract class ParkingBackend extends Backend {
 			psr.addProperty(Wgs84_posVocab.LAT, String.valueOf(parkingSpace.getLocationCoordinates().getLat()));
 			psr.addProperty(Wgs84_posVocab.LONG, String.valueOf(parkingSpace.getLocationCoordinates().getLng()));
 		}
-		return psr;
 	}
 
 	protected abstract Model addToResources(URI uri, Model model);
