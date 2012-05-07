@@ -141,6 +141,14 @@ public class ParkingHLBackend extends ParkingBackend {
 			ctx.sendUpstream(me);
 			return;
 		}
+		
+		// update all resources since they are outdated due to the cache's configuration		
+		Collection<Model> models = resources.values();
+		for (Model model : models) {
+			model.close();
+		}
+		resources.clear();
+		registerResources();
 
 		super.messageReceived(ctx, me);
 	}
