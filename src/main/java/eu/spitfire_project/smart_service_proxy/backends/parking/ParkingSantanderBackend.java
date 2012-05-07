@@ -122,9 +122,13 @@ public class ParkingSantanderBackend extends ParkingBackend {
 				final Collection<Model> models = createModels(parkingAreas);
 				registerModels(models);
 
-				URI uri = new URI(entityManager.getURIBase() + pathPrefix + getCityName());
-				addToResources(uri, createCityModel(parkingAreas, getCityName()));
-				log.debug("registered city: " + uri);				
+				URI cityUri = new URI(entityManager.getURIBase() + pathPrefix + getCityName());
+				addToResources(cityUri, createCityModel(parkingAreas, getCityName()));
+				log.debug("registered city: " + cityUri);
+				
+				URI parkingSpacesUri = new URI(entityManager.getURIBase() + pathPrefix + getCityName()+"ParkingSpaces");
+				addToResources(parkingSpacesUri, createCityModelForParkingSpaces(parkingAreas));			
+				log.debug("registered parking spaces: " + parkingSpacesUri);
 				
 			} catch (final URISyntaxException e) {
 				ParkingSantanderBackend.log.fatal("This should never happen.", e);

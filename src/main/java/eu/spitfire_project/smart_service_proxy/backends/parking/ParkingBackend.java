@@ -137,12 +137,11 @@ public abstract class ParkingBackend extends Backend {
 		try {
 			for (final ParkingArea parkingArea : parkingAreas) {
 				// create a model for the parking area
-				String name;
 				Model parkingAreaModel = ModelFactory.createDefaultModel();
 				models.add(parkingAreaModel);
-				name = URLEncoder.encode(parkingArea.getName(), "utf8");
+				String urlEncodedName = URLEncoder.encode(parkingArea.getName(), "utf8");
 				Resource areaType = "PH".equals(parkingArea.getKind()) ? ParkingVocab.PARKING_INDOOR_AREA : ParkingVocab.PARKING_OUTDOOR_AREA;
-				final Resource parkingAreaResource = parkingAreaModel.createResource(entityManager.getURIBase() + pathPrefix + name, areaType);
+				final Resource parkingAreaResource = parkingAreaModel.createResource(entityManager.getURIBase() + pathPrefix + urlEncodedName, areaType);
 				
 				fillinParkingAreaResource(parkingArea, parkingAreaResource);
 				
@@ -151,7 +150,7 @@ public abstract class ParkingBackend extends Backend {
 				for (ParkingSpace parkingSpace : parkingArea.getParkingSpaces()) {
 					Model parkingLotModel = ModelFactory.createDefaultModel();
 					models.add(parkingLotModel);
-					Resource parkingLotRes = createParkingSpaceResource(parkingLotModel, name, parkingSpace);
+					Resource parkingLotRes = createParkingSpaceResource(parkingArea, parkingLotModel, parkingSpace);
 					parkingAreaResource.addProperty(DULVocab.HAS_PART, parkingLotRes);
 				}
 
@@ -227,6 +226,31 @@ public abstract class ParkingBackend extends Backend {
 		return cityModel;
 	}
 	
+	/**
+	 * Just for demo, should be replaced by SPARQL queries
+	 * @param parkingAreas 
+	 * @return 
+	 * @throws UnsupportedEncodingException 
+	 * @deprecated
+	 */
+	protected Model createCityModelForParkingSpaces(Collection<ParkingArea> parkingAreas) throws UnsupportedEncodingException{
+		Model cityModel = ModelFactory.createDefaultModel();
+		
+		for (ParkingArea parkingArea : parkingAreas) {
+			
+			Collection<ParkingSpace> parkingSpaces = parkingArea.getParkingSpaces();
+			for (ParkingSpace parkingSpace : parkingSpaces) {
+				String name = URLEncoder.encode(parkingArea.getName(), "utf8");
+				Resource parkingLotType = "PP".equals(parkingSpace.getType()) ? ParkingVocab.PARKING_UNCOVERED_LOT : ParkingVocab.PARKING_COVERED_LOT;
+				final Resource psr = cityModel.createResource(entityManager.getURIBase() + pathPrefix + name + "/" + parkingSpace.getId(), parkingLotType);
+				fillinParkingSpaceResource(parkingArea.getName(),parkingSpace, psr);
+			}
+			
+		}
+		
+		return cityModel;
+	}
+	
 	protected Model createOccupationLevelModelOverview() throws UnsupportedEncodingException, URISyntaxException{
 		
 		for (int i = 0; i <=100; i+=25) {
@@ -259,21 +283,23 @@ public abstract class ParkingBackend extends Backend {
 		return null;
 	}
 
-	private Resource createParkingSpaceResource(final Model model, String name, ParkingSpace parkingSpace) {
+	private Resource createParkingSpaceResource(final ParkingArea parkingArea, final Model model, ParkingSpace parkingSpace) throws UnsupportedEncodingException {
+		String urlEncodedName = URLEncoder.encode(parkingArea.getName(), "utf8");
 		Resource parkingLotType = "PP".equals(parkingSpace.getType()) ? ParkingVocab.PARKING_UNCOVERED_LOT : ParkingVocab.PARKING_COVERED_LOT;
-		final Resource psr = model.createResource(entityManager.getURIBase() + pathPrefix + name + "/" + parkingSpace.getId(), parkingLotType);
-		fillinParkingSpaceResource(parkingSpace, psr);
+		final Resource psr = model.createResource(entityManager.getURIBase() + pathPrefix + urlEncodedName + "/" + parkingSpace.getId(), parkingLotType);
+		fillinParkingSpaceResource(parkingArea.getName(),parkingSpace, psr);
 		return psr;
 	}
 
 
 	// ------------------------------------------------------------------------
 	/**
+	 * @param parkingAreaName
 	 * @param parkingSpace
 	 * @param psr
 	 */
-	private void fillinParkingSpaceResource(ParkingSpace parkingSpace, final Resource psr) {
-		psr.addProperty(ParkingVocab.PARKINGID, parkingSpace.getId());
+	private void fillinParkingSpaceResource(String parkingAreaName, ParkingSpace parkingSpace, final Resource psr) {
+		psr.addProperty(ParkingVocab.PARKINGID, parkingAreaName + " #"+parkingSpace.getId());
 		if (ParkingLotStatus.FREE.equals(parkingSpace.getStatus())) {
 			psr.addProperty(ParkingVocab.PARKINGSTATUS, ParkingVocab.PARKING_AVAILABLE_LOT);
 		} else {
