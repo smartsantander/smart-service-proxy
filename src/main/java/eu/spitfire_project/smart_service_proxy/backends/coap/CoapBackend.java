@@ -87,7 +87,7 @@ public class CoapBackend extends Backend{
     }
     
     @Override
-    public void messageReceived(final ChannelHandlerContext ctx, MessageEvent me){
+    public void messageReceived(final ChannelHandlerContext ctx, final MessageEvent me){
         
         if(!(me.getMessage() instanceof HttpRequest)) {
             ctx.sendUpstream(me);
@@ -152,20 +152,24 @@ public class CoapBackend extends Backend{
                 coapRequest.setResponseCallback(new ResponseCallback() {
                     @Override
                     public void receiveCoapResponse(CoapResponse coapResponse) {
+                        
+                        log.debug("[CoapBackend] Received response from " + me.getRemoteAddress());
+                        
                         Object response;
 
-                        //------TEST!!!
-                        ChannelBuffer copy = ChannelBuffers.copiedBuffer(coapResponse.getPayload());
-                        byte[] copyArray = new byte[copy.readableBytes()];
-                        copy.readBytes(copyArray);
-                        log.debug("[CoapBackend] Payload of received packet: " +
-                                new String(copyArray, Charset.forName("UTF-8")));
-
-                        //-------TEST ENDE!!!
-
-                        //TODO Core-Link-Format to HTTP links.
                         try{
-                            response = new SelfDescription(coapResponse, mirrorURI);
+                            if(coapResponse.getPayload().readableBytes() > 0){
+                                response = new SelfDescription(coapResponse, mirrorURI);
+                            }
+                            else{
+                                log.debug("[CoapBackend] Convert CoapResponse to HttpResponse");
+                                response = Http2CoapConverter.convertCoapToHttpResponse(coapResponse,
+                                        httpRequest.getProtocolVersion());
+                                ((DefaultHttpResponse) response)
+                                        .setContent(ChannelBuffers.
+                                                wrappedBuffer("OK".getBytes(Charset.forName("UTF-8"))));
+                                log.debug("[CoapBackend] Conversion CoapResponse to HttpResponse finished.");
+                            }
                         }
                         catch (InvalidOptionException e) {
                             response = new DefaultHttpResponse(httpRequest.getProtocolVersion(), HttpResponseStatus.OK);
@@ -174,8 +178,22 @@ public class CoapBackend extends Backend{
                         catch(Exception e){
                             response = new DefaultHttpResponse(HttpVersion.HTTP_1_1,
                                     HttpResponseStatus.OK);
-                            ((HttpResponse) response).setContent(ChannelBuffers.wrappedBuffer(copyArray));
+                            ((HttpResponse) response)
+                                    .setContent(ChannelBuffers.wrappedBuffer(coapResponse.getPayload()));
                         }
+
+//                        //------TEST!!!
+//                        ChannelBuffer copy = ChannelBuffers.copiedBuffer(coapResponse.getPayload());
+//                        byte[] copyArray = new byte[copy.readableBytes()];
+//                        copy.readBytes(copyArray);
+//                        log.debug("[CoapBackend] Payload of received packet: " +
+//                                new String(copyArray, Charset.forName("UTF-8")));
+
+                        //-------TEST ENDE!!!
+
+                        //TODO Core-Link-Format to HTTP links.
+
+
 
                         //Send response
                         ChannelFuture future = Channels.write(ctx.getChannel(), response);
