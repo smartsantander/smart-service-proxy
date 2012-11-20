@@ -24,6 +24,8 @@
  */
 package eu.spitfire_project.smart_service_proxy;
 
+
+import java.net.Inet6Address;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.util.concurrent.Executors;
@@ -33,15 +35,18 @@ import org.apache.commons.configuration.PropertiesConfiguration;
 import org.apache.log4j.ConsoleAppender;
 import org.apache.log4j.Level;
 import org.apache.log4j.Logger;
-import org.apache.log4j.SimpleLayout;
+import org.apache.log4j.PatternLayout;
 import org.jboss.netty.bootstrap.ServerBootstrap;
 import org.jboss.netty.channel.socket.nio.NioServerSocketChannelFactory;
-import org.jboss.netty.handler.execution.ExecutionHandler;
-import org.jboss.netty.handler.execution.OrderedMemoryAwareThreadPoolExecutor;
+
+import com.hp.hpl.jena.rdf.model.Model;
+import com.hp.hpl.jena.rdf.model.ModelFactory;
+import com.hp.hpl.jena.rdf.model.Statement;
+import com.hp.hpl.jena.rdf.model.StmtIterator;
 
 import de.uniluebeck.itm.spitfire.gatewayconnectionmapper.ConnectionMapper;
 import eu.spitfire_project.smart_service_proxy.backends.coap.CoapBackend;
-import eu.spitfire_project.smart_service_proxy.backends.coap.CoapNodeRegistrationServer;
+import eu.spitfire_project.smart_service_proxy.backends.coap.uberdust.UberdustCoapServerBackend;
 import eu.spitfire_project.smart_service_proxy.backends.files.FilesBackend;
 import eu.spitfire_project.smart_service_proxy.backends.generator.GeneratorBackend;
 import eu.spitfire_project.smart_service_proxy.backends.parking.ParkingHLBackend;
@@ -52,28 +57,60 @@ import eu.spitfire_project.smart_service_proxy.backends.uberdust.UberdustBackend
 import eu.spitfire_project.smart_service_proxy.backends.wiselib_test.WiselibTestBackend;
 import eu.spitfire_project.smart_service_proxy.core.Backend;
 import eu.spitfire_project.smart_service_proxy.core.EntityManager;
-import eu.spitfire_project.smart_service_proxy.core.HttpEntityManagerPipelineFactory;
+import eu.spitfire_project.smart_service_proxy.core.ShdtSerializer;
+import eu.spitfire_project.smart_service_proxy.core.httpServer.HttpEntityManagerPipelineFactory;
+import eu.spitfire_project.smart_service_proxy.noderegistration.AutoAnnotation;
+import eu.spitfire_project.smart_service_proxy.noderegistration.CoapNodeRegistrationServer;
+import eu.spitfire_project.smart_service_proxy.visualization.VisualizerClient;
+
 
 public class Main {
 
     private static Logger log = Logger.getLogger(Main.class.getName());
 
     static{
-        Logger.getLogger("eu.spitfire_project.smart_service_proxy").addAppender(new ConsoleAppender(new SimpleLayout()));
+        String pattern = "%-23d{yyyy-MM-dd HH:mm:ss,SSS} | %-32.32t | %-30.30c{1} | %-5p | %m%n";
+        PatternLayout patternLayout = new PatternLayout(pattern);
+
+        Logger.getRootLogger().removeAllAppenders();
+        Logger.getRootLogger().addAppender(new ConsoleAppender(patternLayout));
+
+        Logger.getRootLogger().setLevel(Level.ERROR);
         Logger.getLogger("eu.spitfire_project.smart_service_proxy").setLevel(Level.DEBUG);
-
-        Logger.getLogger("de.uniluebeck.itm.spitfire.gatewayconnectionmapper").addAppender(new ConsoleAppender(new SimpleLayout()));
-        Logger.getLogger("de.uniluebeck.itm.spitfire.gatewayconnectionmapper").setLevel(Level.DEBUG);
-
-        Logger.getLogger("de.uniluebeck.itm.spitfire.nCoap.communication.core").addAppender(new ConsoleAppender(new SimpleLayout()));
-        Logger.getLogger("de.uniluebeck.itm.spitfire.nCoap.communication.core").setLevel(Level.DEBUG);
-
+        Logger.getLogger("eu.spitfire_project.smart_service_proxy.core.ShdtSerializer").setLevel(Level.ERROR);
+        Logger.getLogger("de.uniluebeck.itm.spitfire.nCoap.communication").setLevel(Level.ERROR);
     }
+
+	private static void testShdt() {
+		Model m = ModelFactory.createDefaultModel();
+		//m.read("http://dbpedia.neofonie.de/browse/rdf-type:River/River-mouth:Rhine/Place-length~:50000~/?fc=30");
+		m.read("http://spitfire.ibr.cs.tu-bs.de/be-0001/b4ec27c5-d543-496a-b2bf-a960134dcb37/2/sensor#");
+		ShdtSerializer shdt = new ShdtSerializer(128);
+		byte[] buffer = new byte[10 * 1024];
+		int l = shdt.fill_buffer(buffer, m.listStatements());
+		for(int i=l; i<buffer.length; i++) { buffer[i] = (byte) 0xff; }
+
+		//System.out.println(Arrays.toString(buffer));
+		//System.out.println(new String(buffer));
+
+		shdt.reset();
+
+		Model m2 = ModelFactory.createDefaultModel();
+		shdt.read_buffer(m2, buffer);
+		System.out.println(m2.toString());
+		System.out.println("equal: " + m.isIsomorphicWith(m2));
+		StmtIterator iter = m2.listStatements();
+		while(true) {
+			Statement st = iter.nextStatement();
+			System.out.println(st);
+		}
+	}
 
     /**
      * @throws Exception might be everything
      */
     public static void main(String[] args) throws Exception {
+		//testShdt();
 
         Configuration config = new PropertiesConfiguration("ssp.properties");
 
@@ -82,11 +119,7 @@ public class Main {
                         Executors.newCachedThreadPool(),
                         Executors.newCachedThreadPool()));
 
-        ExecutionHandler executionHandler = new ExecutionHandler(
-                new OrderedMemoryAwareThreadPoolExecutor(
-                        config.getInt("threads", 30),
-                        config.getLong("ram", 1024 * 1024),
-                        config.getLong("ram", 1024 * 1024)));
+
 
         boolean enableVirtualHttpServerForCoap = config.getBoolean("coap.enableVirtualHttpServer", false);
         log.debug("Enable virtual HTTP server for CoAP devices: " + enableVirtualHttpServerForCoap);
@@ -96,30 +129,59 @@ public class Main {
         }
 
         HttpEntityManagerPipelineFactory empf =
-                new HttpEntityManagerPipelineFactory(executionHandler, enableVirtualHttpServerForCoap);
+                new HttpEntityManagerPipelineFactory(enableVirtualHttpServerForCoap);
         bootstrap.setPipelineFactory(empf);
-        int listenPort = config.getInt("listenPort", 8080);
+        int listenPort = config.getInt("SSP_HTTP_SERVER_PORT", 8080);
         bootstrap.bind(new InetSocketAddress(listenPort));
 
         //Set URI base
         String defaultHost = InetAddress.getLocalHost().getCanonicalHostName();
+
+//TODO: Check if selection is OK
+//<<<<<<< HEAD
+//        String baseURIHost = config.getString("baseURIHost", defaultHost);
+//        String proxyPass = config.getString("proxyPass", "");
+//       
+//		if(proxyPass.equals("")){
+//			if (listenPort != 80){
+//				baseURIHost = baseURIHost + ":" + listenPort;
+//			}
+//        }else{
+//        	baseURIHost += proxyPass; 
+//        }
+//        EntityManager.getInstance().setURIBase("http://" + baseURIHost);
+//        EntityManager.getInstance().setProxyPass(proxyPass);
+//       
+//        log.debug("---------------------------baseURIHost: "+baseURIHost);
+//=======
+//        String baseURIHost = config.getString("SSP_DNS_NAME", defaultHost);
+//        if(listenPort != 80){
+//            baseURIHost = baseURIHost + ":" + listenPort;
+//        }
+//>>>>>>> sms-master
+        
         String baseURIHost = config.getString("baseURIHost", defaultHost);
-        String proxyPass = config.getString("proxyPass", "");
-       
-		if(proxyPass.equals("")){
-			if (listenPort != 80){
+		String proxyPass = config.getString("proxyPass", "");
+
+		if (proxyPass.equals("")) {
+			if (listenPort != 80) {
 				baseURIHost = baseURIHost + ":" + listenPort;
 			}
-        }else{
-        	baseURIHost += proxyPass; 
-        }
-        EntityManager.getInstance().setURIBase("http://" + baseURIHost);
-        EntityManager.getInstance().setProxyPass(proxyPass);
-       
-        log.debug("---------------------------baseURIHost: "+baseURIHost);
+		} else {
+			baseURIHost += proxyPass;
+		}
+		EntityManager.getInstance().setURIBase("http://" + baseURIHost);
+		EntityManager.getInstance().setProxyPass(proxyPass);
+
+		log.debug("---------------------------baseURIHost: "+baseURIHost);
 
         //Create enabled backends
         createBackends(config);
+
+        //Set AutoAnnotation to use images from visualizer
+        AutoAnnotation.getInstance().setVisualizerClient(VisualizerClient.getInstance());
+        AutoAnnotation.getInstance().start();
+        //new SimulatedTimeScheduler().run();
     }
     
     private static void startConnectionMapper(Configuration config) throws Exception{
@@ -128,7 +190,7 @@ public class Main {
         String tunInterfaceName = config.getString("tunInterfaceName");
 
         ConnectionMapper.start(udpNetworkInterfaceName, tcpNetworkInterfaceName, tunInterfaceName,
-                5683, config.getInt("listenPort", 8080));
+                5683, config.getInt("SSP_HTTP_SERVER_PORT", 8080));
     }
     
 //    private static void startConnectionMapper(Configuration config) throws URISyntaxException, SocketException {
@@ -225,7 +287,7 @@ public class Main {
                                                config.getDouble("generator.pFeature", 0.01));
             }
 
-            //SLSEBackend
+            //SLSEBackendsrc/main/java/eu/spitfire_project/smart_service_proxy/backends/slse
             else if(enabledBackend.equals("slse")) {
                 
                 backend = new SLSEBackend(config.getBoolean("slse.waitForPolling", false),
@@ -264,12 +326,27 @@ public class Main {
 
             //CoAPBackend
             else if(enabledBackend.startsWith("coap")) {
-                String ipv6Prefix = config.getString(enabledBackend + ".ipv6Prefix");
-                if(ipv6Prefix == null){
-                    throw new Exception("Property '" + enabledBackend + ".ipv6Prefix' not set.");
-                }
-                backend = new CoapBackend(30, ipv6Prefix);
+
+                String ipv6Prefix = Inet6Address.getByName(config.getString(enabledBackend + ".ipv6Prefix"))
+                                                .getHostAddress();
+
+                ipv6Prefix = ipv6Prefix.substring(0, ipv6Prefix.indexOf(":0:0:0:0"));
+
+                backend = new CoapBackend(ipv6Prefix,
+                                          config.getBoolean(enabledBackend + ".enableVirtualHttpServer", false));
+
                 CoapNodeRegistrationServer.getInstance().addCoapBackend((CoapBackend) backend);
+            }
+
+            //UberdustCoapServerBackend
+            else if(enabledBackend.equals("uberdustcoapserver")){
+                String uberdustServerDnsName = config.getString("uberdustcoapserver.dnsName");
+                if (uberdustServerDnsName == null){
+                    throw new Exception("Property uberdustcoapserver.dnsName' not set.");
+                }
+
+                backend = new UberdustCoapServerBackend(uberdustServerDnsName, config);
+                CoapNodeRegistrationServer.getInstance().addCoapBackend((UberdustCoapServerBackend) backend);
             }
 
             //SimpleBackend
@@ -302,15 +379,11 @@ public class Main {
                 throw new Exception("Config file error: Backend '" + enabledBackend + "' not found.");
             }
 
-            backend.bind(EntityManager.getInstance());
+            backend.bind();
 
-            if(log.isDebugEnabled()){
-                log.debug("[Main] Enabled new " + backend.getClass().getSimpleName() + " with path prefix " +
-                    backend.getPathPrefix());
-            }
+            log.debug("Enabled new " + backend.getClass().getSimpleName() + " with prefix " +
+                    backend.getPrefix());
         }
-
-
 
     }
     
