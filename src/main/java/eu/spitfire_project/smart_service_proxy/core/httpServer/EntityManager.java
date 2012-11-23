@@ -99,6 +99,14 @@ public class EntityManager extends SimpleChannelHandler {
 
     //Make EntityManager a Singleton
 	private static EntityManager instance = new EntityManager();
+	
+	/**
+	 * Has to be set if the SSP is run by an Apache web server 
+	 * @see http://httpd.apache.org/docs/2.0/mod/mod_proxy.html
+	 */
+	private String proxyPath = "";
+	
+	
 	private EntityManager(){
 	}
 	
@@ -354,6 +362,14 @@ public class EntityManager extends SimpleChannelHandler {
 			b = backends.get(pathPart);
 		}
 		return b;
+	}
+
+	public void setProxyPath(String proxyPath) {
+		this.proxyPath = proxyPath;		
+	}
+	
+	public String getProxyPath() {
+		return this.proxyPath;		
 	}
 }
 

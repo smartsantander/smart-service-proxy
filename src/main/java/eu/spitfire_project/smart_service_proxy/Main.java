@@ -56,8 +56,8 @@ import eu.spitfire_project.smart_service_proxy.backends.slse.SLSEBackend;
 import eu.spitfire_project.smart_service_proxy.backends.uberdust.UberdustBackend;
 import eu.spitfire_project.smart_service_proxy.backends.wiselib_test.WiselibTestBackend;
 import eu.spitfire_project.smart_service_proxy.core.Backend;
-import eu.spitfire_project.smart_service_proxy.core.EntityManager;
 import eu.spitfire_project.smart_service_proxy.core.ShdtSerializer;
+import eu.spitfire_project.smart_service_proxy.core.httpServer.EntityManager;
 import eu.spitfire_project.smart_service_proxy.core.httpServer.HttpEntityManagerPipelineFactory;
 import eu.spitfire_project.smart_service_proxy.noderegistration.AutoAnnotation;
 import eu.spitfire_project.smart_service_proxy.noderegistration.CoapNodeRegistrationServer;
@@ -161,17 +161,17 @@ public class Main {
 //>>>>>>> sms-master
         
         String baseURIHost = config.getString("baseURIHost", defaultHost);
-		String proxyPass = config.getString("proxyPass", "");
+		String proxyPath = config.getString("proxyPath", "");
 
-		if (proxyPass.equals("")) {
+		if (proxyPath.equals("")) {
 			if (listenPort != 80) {
 				baseURIHost = baseURIHost + ":" + listenPort;
 			}
 		} else {
-			baseURIHost += proxyPass;
+			baseURIHost += proxyPath;
 		}
-		EntityManager.getInstance().setURIBase("http://" + baseURIHost);
-		EntityManager.getInstance().setProxyPass(proxyPass);
+//		EntityManager.getInstance().setURIBase("http://" + baseURIHost);
+		EntityManager.getInstance().setProxyPath(proxyPath);
 
 		log.debug("---------------------------baseURIHost: "+baseURIHost);
 
@@ -179,8 +179,8 @@ public class Main {
         createBackends(config);
 
         //Set AutoAnnotation to use images from visualizer
-        AutoAnnotation.getInstance().setVisualizerClient(VisualizerClient.getInstance());
-        AutoAnnotation.getInstance().start();
+//        AutoAnnotation.getInstance().setVisualizerClient(VisualizerClient.getInstance());
+//        AutoAnnotation.getInstance().start();
         //new SimulatedTimeScheduler().run();
     }
     

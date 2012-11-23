@@ -48,7 +48,7 @@ import com.google.gson.Gson;
 import com.hp.hpl.jena.rdf.model.Model;
 
 import eu.spitfire_project.smart_service_proxy.backends.parking.ParkingSpace.ParkingLotStatus;
-import eu.spitfire_project.smart_service_proxy.core.EntityManager;
+import eu.spitfire_project.smart_service_proxy.core.httpServer.EntityManager;
 
 /**
  * A {@link ParkingHLBackend} instance hosts models for parking areas.
@@ -81,8 +81,8 @@ public class ParkingHLBackend extends ParkingBackend {
 	}
 
 	@Override
-	public void bind(final EntityManager em) {
-		super.bind(em);
+	public void bind() {
+		super.bind();
 		registerResources();
 	}
 
@@ -121,7 +121,7 @@ public class ParkingHLBackend extends ParkingBackend {
 			final Collection<Model> models = createModels(parkings.getParkings());
 			registerModels(models);
 
-			final URI uri = new URI(entityManager.getURIBase() + pathPrefix + "Luebeck");
+			final URI uri = new URI(getParkingBaseUriString() + "Luebeck");
 			addToResources(uri, createCityModel(parkings.getParkings(), "Luebeck"));
 			ParkingHLBackend.log.debug("registered city: " + uri);
 
@@ -142,13 +142,13 @@ public class ParkingHLBackend extends ParkingBackend {
 			return;
 		}
 
-		// update all resources since they are outdated due to the cache's configuration
-		final Collection<Model> models = resources.values();
-		for (final Model model : models) {
-			model.close();
-		}
-		resources.clear();
-		registerResources();
+//		// update all resources since they are outdated due to the cache's configuration
+//		final Collection<Model> models = resources.values();
+//		for (final Model model : models) {
+//			model.close();
+//		}
+//		resources.clear();
+//		registerResources();
 
 		super.messageReceived(ctx, me);
 	}
@@ -160,6 +160,12 @@ public class ParkingHLBackend extends ParkingBackend {
 
 	@Override
 	protected Model addToResources(final URI uri, final Model model) {
-		return resources.put(uri, model);
+		EntityManager.getInstance().entityCreated(uri, this);
+		try {
+			return resources.put(new URI(uri.toString().replace(getHostBaseUriString(),"")), model);
+		} catch (URISyntaxException e) {
+			log.error(e,e);
+			throw new RuntimeException(e);
+		}
 	}
 }

@@ -11,6 +11,8 @@ import java.util.LinkedList;
 import java.util.Map;
 import java.util.Set;
 
+import org.apache.commons.configuration.Configuration;
+import org.apache.commons.configuration.PropertiesConfiguration;
 import org.apache.log4j.Logger;
 import org.jboss.netty.channel.ChannelFuture;
 import org.jboss.netty.channel.ChannelFutureListener;
@@ -28,8 +30,8 @@ import com.hp.hpl.jena.rdf.model.Resource;
 
 import eu.spitfire_project.smart_service_proxy.backends.parking.ParkingSpace.ParkingLotStatus;
 import eu.spitfire_project.smart_service_proxy.core.Backend;
-import eu.spitfire_project.smart_service_proxy.core.EntityManager;
 import eu.spitfire_project.smart_service_proxy.core.SelfDescription;
+import eu.spitfire_project.smart_service_proxy.core.httpServer.EntityManager;
 import eu.spitfire_project.smart_service_proxy.utils.HttpResponseFactory;
 
 /**
@@ -66,13 +68,13 @@ public abstract class ParkingBackend extends Backend {
 	}
 
 	@Override
-	public void bind(final EntityManager em) {
-		super.bind(em);
+	public void bind() {
+		super.bind();
 
 		if (ParkingBackend.occupationLevelModel == null) {
 			ParkingBackend.occupationLevelModel = ModelFactory.createDefaultModel();
 			try {
-				addToResources(new URI(entityManager.getURIBase() + pathPrefix + "occupationLevels"), createOccupationLevelModelOverview());
+				addToResources(new URI(getParkingBaseUriString() + "occupationLevels"), createOccupationLevelModelOverview());
 			} catch (final UnsupportedEncodingException e) {
 				ParkingBackend.log.error(e, e);
 			} catch (final URISyntaxException e) {
@@ -105,7 +107,7 @@ public abstract class ParkingBackend extends Backend {
 		Object response;
 
 		// Look up resource
-		final URI resourceURI = entityManager.normalizeURI(new URI(request.getUri()));
+		final URI resourceURI = EntityManager.getInstance().normalizeURI(new URI(request.getUri()));
 		final Model model = getResourcesMapping().get(resourceURI);
 
 		if (model != null) {
@@ -156,7 +158,7 @@ public abstract class ParkingBackend extends Backend {
 				models.add(parkingAreaModel);
 				final String urlEncodedName = URLEncoder.encode(parkingArea.getName(), "utf8");
 				final Resource areaType = "PH".equals(parkingArea.getKind()) ? ParkingVocab.PARKING_INDOOR_AREA : ParkingVocab.PARKING_OUTDOOR_AREA;
-				final Resource parkingAreaResource = parkingAreaModel.createResource(entityManager.getURIBase() + pathPrefix + urlEncodedName,
+				final Resource parkingAreaResource = parkingAreaModel.createResource(getParkingBaseUriString() + urlEncodedName,
 						areaType);
 
 				fillinParkingAreaResource(parkingArea, parkingAreaResource);
@@ -218,7 +220,7 @@ public abstract class ParkingBackend extends Backend {
 			throws UnsupportedEncodingException {
 		final String urlEncodedName = URLEncoder.encode(parkingArea.getName(), "utf8");
 		final Resource parkingLotType = "PP".equals(parkingSpace.getType()) ? ParkingVocab.PARKING_UNCOVERED_LOT : ParkingVocab.PARKING_COVERED_LOT;
-		final Resource psr = model.createResource(entityManager.getURIBase() + pathPrefix + urlEncodedName + "/" + parkingSpace.getId(),
+		final Resource psr = model.createResource(getParkingBaseUriString() + urlEncodedName + "/" + parkingSpace.getId(),
 				parkingLotType);
 		fillinParkingSpaceResource(parkingArea.getName(), parkingSpace, psr);
 		return psr;
@@ -250,7 +252,7 @@ public abstract class ParkingBackend extends Backend {
 
 		for (int i = 0; i <= 100; i += 25) {
 			final Resource occupationLevel = ParkingBackend.occupationLevelModel.createResource(
-					entityManager.getURIBase() + pathPrefix + "level" + i, ParkingVocab.PARKING_OCCUPATION_LEVEL);
+					getParkingBaseUriString()+ "level" + i, ParkingVocab.PARKING_OCCUPATION_LEVEL);
 			occupationLevel.addProperty(Muo_vocabVocab.MEASURED_IN, Ucum_instancesVocab.PERCENT);
 			occupationLevel.addProperty(DULVocab.HAS_DATA_VALUE, String.valueOf(i));
 			createandRegisterOccupationLevelModel(i);
@@ -262,7 +264,7 @@ public abstract class ParkingBackend extends Backend {
 	protected Model createandRegisterOccupationLevelModel(final int level) throws UnsupportedEncodingException, URISyntaxException {
 
 		final Model occupationLevelModel = ModelFactory.createDefaultModel();
-		final Resource occupationLevel = occupationLevelModel.createResource(entityManager.getURIBase() + pathPrefix + "level" + level,
+		final Resource occupationLevel = occupationLevelModel.createResource(getParkingBaseUriString() + "level" + level,
 				ParkingVocab.PARKING_OCCUPATION_LEVEL);
 		ParkingBackend.occupationLevels.put("level" + level, occupationLevel);
 		occupationLevel.addProperty(Muo_vocabVocab.MEASURED_IN, Ucum_instancesVocab.PERCENT);
@@ -290,7 +292,7 @@ public abstract class ParkingBackend extends Backend {
 
 			final String name = URLEncoder.encode(parkingArea.getName(), "utf8");
 			final Resource areaType = "PH".equals(parkingArea.getKind()) ? ParkingVocab.PARKING_INDOOR_AREA : ParkingVocab.PARKING_OUTDOOR_AREA;
-			final Resource parkingAreaResource = cityModel.createResource(entityManager.getURIBase() + pathPrefix + name, areaType);
+			final Resource parkingAreaResource = cityModel.createResource(getParkingBaseUriString() + name, areaType);
 
 			fillinParkingAreaResource(parkingArea, parkingAreaResource);
 
@@ -318,7 +320,7 @@ public abstract class ParkingBackend extends Backend {
 				final String name = URLEncoder.encode(parkingArea.getName(), "utf8");
 				final Resource parkingLotType = "PP".equals(parkingSpace.getType()) ? ParkingVocab.PARKING_UNCOVERED_LOT
 						: ParkingVocab.PARKING_COVERED_LOT;
-				final Resource psr = cityModel.createResource(entityManager.getURIBase() + pathPrefix + name + "/" + parkingSpace.getId(),
+				final Resource psr = cityModel.createResource(getParkingBaseUriString() + name + "/" + parkingSpace.getId(),
 						parkingLotType);
 				fillinParkingSpaceResource(parkingArea.getName(), parkingSpace, psr);
 			}
@@ -326,5 +328,13 @@ public abstract class ParkingBackend extends Backend {
 		}
 
 		return cityModel;
+	}
+	
+	protected String getParkingBaseUriString(){
+		return getHostBaseUriString() + getPrefix();
+	}
+	
+	protected String getHostBaseUriString(){
+		return "http://"+EntityManager.SSP_DNS_NAME +":"+EntityManager.SSP_HTTP_SERVER_PORT;
 	}
 }

@@ -45,7 +45,7 @@ import com.hp.hpl.jena.rdf.model.Model;
 import eu.spitfire_project.smart_service_proxy.backends.parking.ParkingSpace.ParkingLotStatus;
 import eu.spitfire_project.smart_service_proxy.backends.parking.generated.ParkingLot;
 import eu.spitfire_project.smart_service_proxy.backends.parking.generated.ParkingService;
-import eu.spitfire_project.smart_service_proxy.core.EntityManager;
+import eu.spitfire_project.smart_service_proxy.core.httpServer.EntityManager;
 
 /**
  * A {@link ParkingSantanderBackend} instance hosts models for parking areas located in the city of
@@ -76,8 +76,8 @@ public class ParkingSantanderBackend extends ParkingBackend {
 	}
 
 	@Override
-	public void bind(final EntityManager em) {
-		super.bind(em);
+	public void bind() {
+		super.bind();
 		registerResources();
 	}
 
@@ -122,11 +122,11 @@ public class ParkingSantanderBackend extends ParkingBackend {
 				final Collection<Model> models = createModels(parkingAreas);
 				registerModels(models);
 
-				final URI cityUri = new URI(entityManager.getURIBase() + pathPrefix + getCityName());
+				final URI cityUri = new URI(getParkingBaseUriString() + getCityName());
 				addToResources(cityUri, createCityModel(parkingAreas, getCityName()));
 				ParkingSantanderBackend.log.debug("registered city: " + cityUri);
 
-				final URI parkingSpacesUri = new URI(entityManager.getURIBase() + pathPrefix + getCityName() + "ParkingSpaces");
+				final URI parkingSpacesUri = new URI(getParkingBaseUriString() + getCityName() + "ParkingSpaces");
 				addToResources(parkingSpacesUri, createCityModelForParkingSpaces(parkingAreas));
 				ParkingSantanderBackend.log.debug("registered parking spaces: " + parkingSpacesUri);
 
@@ -258,6 +258,7 @@ public class ParkingSantanderBackend extends ParkingBackend {
 
 	@Override
 	protected Model addToResources(final URI uri, final Model model) {
+		EntityManager.getInstance().entityCreated(uri, this);
 		return resources.put(uri, model);
 	}
 }

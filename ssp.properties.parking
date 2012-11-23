@@ -4,9 +4,11 @@
 #Core settings
 #-------------
 #baseURIHost = www.coap2.wisebed.itm.uni-luebeck.de
+SSP_DNS_NAME = http://localhost
+#SSP_HTTP_SERVER_PORT = 8080
 #listenPort = 8080
 #ram = 2097152
-proxyPass = /ssp
+proxyPath = /ssp
 
 
 #--------------
